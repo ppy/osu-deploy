@@ -86,6 +86,9 @@ namespace osu.Desktop.Deploy
 
             string version = $"{verBase}{increment}";
 
+            if (args.Length > 1)
+                version = args[2];
+
             Console.ForegroundColor = ConsoleColor.White;
             Console.Write($"Ready to deploy {version}!");
             pauseIfInteractive();
