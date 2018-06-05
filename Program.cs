@@ -107,7 +107,7 @@ namespace osu.Desktop.Deploy
 
             write("Running build process...");
             foreach (string targetName in TargetNames.Split(','))
-                runCommand(msbuild_path, $"/v:quiet /m /t:{targetName.Replace('.', '_')} /p:OutputPath={stagingPath};Targets=\"Clean;Build\";Configuration=Release {SolutionName}.sln");
+                runCommand(msbuild_path, $"/v:quiet /m /t:{targetName.Replace('.', '_')} /p:Version={version} /p:OutputPath={stagingPath};Targets=\"Clean;Build\";Configuration=Release {SolutionName}.sln");
 
             write("Creating NuGet deployment package...");
             runCommand(nugetPath, $"pack {NuSpecName} -Version {version} -Properties Configuration=Deploy -OutputDirectory {stagingPath} -BasePath {stagingPath}");
