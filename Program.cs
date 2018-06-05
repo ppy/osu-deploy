@@ -127,7 +127,8 @@ namespace osu.Desktop.Deploy
             File.Copy(Path.Combine(ReleasesFolder, "Setup.exe"), Path.Combine(ReleasesFolder, "install.exe"), true);
             File.Delete(Path.Combine(ReleasesFolder, "Setup.exe"));
 
-            uploadBuild(version);
+            if (interactive)
+                uploadBuild(version);
 
             //reset assemblyinfo.
             updateCsprojVersion("0.0.0");
