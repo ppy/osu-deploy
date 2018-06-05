@@ -86,7 +86,7 @@ namespace osu.Desktop.Deploy
 
             string version = $"{verBase}{increment}";
 
-            if (args.Length > 1)
+            if (args.Length > 1 && !string.IsNullOrEmpty(args[2]))
                 version = args[2];
 
             Console.ForegroundColor = ConsoleColor.White;
