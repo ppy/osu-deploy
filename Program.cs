@@ -299,7 +299,7 @@ namespace osu.Desktop.Deploy
 
             foreach (var a in assets)
             {
-                if (a.Name.EndsWith(".exe")) continue;
+                if (a.Name.EndsWith(".exe") || a.Name.EndsWith(".app.zip")) continue;
 
                 write($"- Downloading {a.Name}...", ConsoleColor.Yellow);
                 new FileWebRequest(Path.Combine(ReleasesFolder, a.Name), $"{GitHubApiEndpoint}/assets/{a.Id}").AuthenticatedBlockingPerform();
