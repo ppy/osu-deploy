@@ -324,6 +324,10 @@ namespace osu.Desktop.Deploy
             {
                 string line = l;
 
+                if (line.Contains("<TargetFramework"))
+                    // temporary re-targeting to net471
+                    line = "<TargetFramework>net471</TargetFramework>";
+
                 foreach (var tag in toUpdate)
                 {
                     int startIndex = l.IndexOf(tag, StringComparison.InvariantCulture);
