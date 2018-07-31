@@ -20,7 +20,7 @@ namespace osu.Desktop.Deploy
         private static string packages => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
         private static string nugetPath => Path.Combine(packages, @"nuget.commandline\4.5.1\tools\NuGet.exe");
         private static string squirrelPath => Path.Combine(packages, @"squirrel.windows\1.8.0\tools\Squirrel.exe");
-        private const string msbuild_path = @"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\MSBuild.exe";
+        private const string dotnet_path = @"C:\Program Files\dotnet\dotnet.exe";
 
         public static string StagingFolder = ConfigurationManager.AppSettings["StagingFolder"];
         public static string ReleasesFolder = ConfigurationManager.AppSettings["ReleasesFolder"];
@@ -43,7 +43,8 @@ namespace osu.Desktop.Deploy
         /// </summary>
         private const int keep_delta_count = 4;
 
-        private static string codeSigningCmd => string.IsNullOrEmpty(codeSigningPassword) ? "" : $"-n \"/a /f {codeSigningCertPath} /p {codeSigningPassword} /t http://timestamp.comodoca.com/authenticode\"";
+        private static string codeSigningCmd =>
+            string.IsNullOrEmpty(codeSigningPassword) ? "" : $"-n \"/a /f {codeSigningCertPath} /p {codeSigningPassword} /t http://timestamp.comodoca.com/authenticode\"";
 
         private static string homeDir => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         private static string codeSigningCertPath => Path.Combine(homeDir, CodeSigningCertificate);
@@ -102,12 +103,11 @@ namespace osu.Desktop.Deploy
             }
 
             write("Updating AssemblyInfo...");
-            updateCsprojVersion(version);
             updateAppveyorVersion(version);
 
             write("Running build process...");
             foreach (string targetName in TargetNames.Split(','))
-                runCommand(msbuild_path, $"/v:quiet /m /t:{targetName.Replace('.', '_')} /p:Version={version} /p:OutputPath={stagingPath};Targets=\"Clean;Build\";Configuration=Release {SolutionName}.sln");
+                runCommand(dotnet_path, $"publish -f netcoreapp2.1 -r win-x64 {ProjectName} -o {stagingPath} --configuration Release /p:Version={version}");
 
             write("Creating NuGet deployment package...");
             runCommand(nugetPath, $"pack {NuSpecName} -Version {version} -Properties Configuration=Deploy -OutputDirectory {stagingPath} -BasePath {stagingPath}");
@@ -118,7 +118,7 @@ namespace osu.Desktop.Deploy
             checkReleaseFiles();
 
             write("Running squirrel build...");
-            runCommand(squirrelPath, $"--releasify {stagingPath}\\{nupkgFilename(version)} --framework-version=net471 --setupIcon {iconPath} --icon {iconPath} {codeSigningCmd} --no-msi");
+            runCommand(squirrelPath, $"--releasify {stagingPath}\\{nupkgFilename(version)} --setupIcon {iconPath} --icon {iconPath} {codeSigningCmd} --no-msi");
 
             //prune again to clean up before upload.
             pruneReleases();
@@ -129,9 +129,6 @@ namespace osu.Desktop.Deploy
 
             if (interactive)
                 uploadBuild(version);
-
-            //reset assemblyinfo.
-            updateCsprojVersion("0.0.0");
 
             write("Done!", ConsoleColor.White);
             pauseIfInteractive();
@@ -313,38 +310,6 @@ namespace osu.Desktop.Deploy
             Directory.CreateDirectory(directory);
         }
 
-        private static void updateCsprojVersion(string version)
-        {
-            var toUpdate = new[] { "<Version>", "<FileVersion>" };
-            string file = Path.Combine(ProjectName, $"{ProjectName}.csproj");
-
-            var l1 = File.ReadAllLines(file);
-            List<string> l2 = new List<string>();
-            foreach (var l in l1)
-            {
-                string line = l;
-
-                if (line.Contains("<TargetFramework"))
-                    // temporary re-targeting to net471
-                    line = "<TargetFramework>net471</TargetFramework>";
-
-                foreach (var tag in toUpdate)
-                {
-                    int startIndex = l.IndexOf(tag, StringComparison.InvariantCulture);
-                    if (startIndex == -1)
-                        continue;
-                    startIndex += tag.Length;
-
-                    int endIndex = l.IndexOf("<", startIndex, StringComparison.InvariantCulture);
-                    line = $"{l.Substring(0, startIndex)}{version}{l.Substring(endIndex)}";
-                }
-
-                l2.Add(line);
-            }
-
-            File.WriteAllLines(file, l2);
-        }
-
         /// <summary>
         /// Find the base path of the active solution (git checkout location)
         /// </summary>
@@ -355,8 +320,20 @@ namespace osu.Desktop.Deploy
             if (string.IsNullOrEmpty(path))
                 path = Environment.CurrentDirectory;
 
-            while (!File.Exists(Path.Combine(path, $"{SolutionName}.sln")))
+            while (true)
+            {
+                if (File.Exists(Path.Combine(path, $"{SolutionName}.sln")))
+                    break;
+
+                if (Directory.Exists(Path.Combine(path, "osu")) && File.Exists(Path.Combine(path, "osu", $"{SolutionName}.sln")))
+                {
+                    path = Path.Combine(path, "osu");
+                    break;
+                }
+
                 path = path.Remove(path.LastIndexOf(Path.DirectorySeparatorChar));
+            }
+
             path += Path.DirectorySeparatorChar;
 
             Environment.CurrentDirectory = path;
@@ -423,6 +400,7 @@ namespace osu.Desktop.Deploy
                     ps.AddScript($"Update-AppveyorBuild -Version \"{version}\"");
                     ps.Invoke();
                 }
+
                 return true;
             }
             catch
@@ -440,6 +418,7 @@ namespace osu.Desktop.Deploy
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.Write(sw.ElapsedMilliseconds.ToString().PadRight(8));
             }
+
             Console.ForegroundColor = col;
             Console.WriteLine(message);
         }
@@ -453,7 +432,8 @@ namespace osu.Desktop.Deploy
 
     internal class RawFileWebRequest : WebRequest
     {
-        public RawFileWebRequest(string url) : base(url)
+        public RawFileWebRequest(string url)
+            : base(url)
         {
         }
 
