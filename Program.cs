@@ -18,12 +18,13 @@ namespace osu.Desktop.Deploy
     internal static class Program
     {
         private static string packages => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
-        private static string nugetPath => Path.Combine(packages, @"nuget.commandline\4.5.1\tools\NuGet.exe");
-        private static string squirrelPath => Path.Combine(packages, @"squirrel.windows\1.8.0\tools\Squirrel.exe");
-        private const string msbuild_path = @"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\MSBuild.exe";
+        private static string nugetPath => Path.Combine(packages, @"nuget.commandline\4.7.0\tools\NuGet.exe");
+        private static string squirrelPath => Path.Combine(packages, @"ppy.squirrel.windows\1.8.0.3\tools\Squirrel.exe");
+        private const string dotnet_path = @"C:\Program Files\dotnet\dotnet.exe";
 
-        public static string StagingFolder = ConfigurationManager.AppSettings["StagingFolder"];
-        public static string ReleasesFolder = ConfigurationManager.AppSettings["ReleasesFolder"];
+        private const string staging_folder = "staging";
+        private const string releases_folder = "releases";
+
         public static string GitHubAccessToken = ConfigurationManager.AppSettings["GitHubAccessToken"];
         public static string GitHubUsername = ConfigurationManager.AppSettings["GitHubUsername"];
         public static string GitHubRepoName = ConfigurationManager.AppSettings["GitHubRepoName"];
@@ -43,12 +44,14 @@ namespace osu.Desktop.Deploy
         /// </summary>
         private const int keep_delta_count = 4;
 
-        private static string codeSigningCmd => string.IsNullOrEmpty(codeSigningPassword) ? "" : $"-n \"/a /f {codeSigningCertPath} /p {codeSigningPassword} /t http://timestamp.comodoca.com/authenticode\"";
+        private static string codeSigningCmd =>
+            string.IsNullOrEmpty(codeSigningPassword) ? "" : $"-n \"/a /f {codeSigningCertPath} /p {codeSigningPassword} /t http://timestamp.comodoca.com/authenticode\"";
 
         private static string homeDir => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         private static string codeSigningCertPath => Path.Combine(homeDir, CodeSigningCertificate);
-        private static string solutionPath => Environment.CurrentDirectory;
-        private static string stagingPath => Path.Combine(solutionPath, StagingFolder);
+        private static string solutionPath;
+        private static string stagingPath => Path.Combine(Environment.CurrentDirectory, staging_folder);
+        private static string releasesPath => Path.Combine(Environment.CurrentDirectory, releases_folder);
         private static string iconPath => Path.Combine(solutionPath, ProjectName, IconName);
 
         private static string nupkgFilename(string ver) => $"{PackageName}.{ver}.nupkg";
@@ -68,20 +71,20 @@ namespace osu.Desktop.Deploy
 
             findSolutionPath();
 
-            if (!Directory.Exists(ReleasesFolder))
+            if (!Directory.Exists(releases_folder))
             {
                 write("WARNING: No release directory found. Make sure you want this!", ConsoleColor.Yellow);
-                Directory.CreateDirectory(ReleasesFolder);
+                Directory.CreateDirectory(releases_folder);
             }
 
             checkGitHubReleases();
 
-            refreshDirectory(StagingFolder);
+            refreshDirectory(staging_folder);
 
             //increment build number until we have a unique one.
-            string verBase = DateTime.Now.ToString("yyyy.Mdd.");
+            string verBase = DateTime.Now.AddDays(-7).ToString("yyyy.Mdd.");
             int increment = 0;
-            while (Directory.GetFiles(ReleasesFolder, $"*{verBase}{increment}*").Any())
+            while (Directory.GetFiles(releases_folder, $"*{verBase}{increment}*").Any())
                 increment++;
 
             string version = $"{verBase}{increment}";
@@ -102,12 +105,19 @@ namespace osu.Desktop.Deploy
             }
 
             write("Updating AssemblyInfo...");
-            updateCsprojVersion(version);
             updateAppveyorVersion(version);
 
             write("Running build process...");
             foreach (string targetName in TargetNames.Split(','))
-                runCommand(msbuild_path, $"/v:quiet /m /t:{targetName.Replace('.', '_')} /p:Version={version} /p:OutputPath={stagingPath};Targets=\"Clean;Build\";Configuration=Release {SolutionName}.sln");
+            {
+                runCommand(dotnet_path, $"publish -f netcoreapp2.1 -r win-x64 {ProjectName} -o {stagingPath} --configuration Release /p:Version={version}");
+
+                // change subsystem of dotnet stub to WINDOWS (defaults to console; no way to change this yet https://github.com/dotnet/core-setup/issues/196)
+                runCommand("tools/editbin.exe", $"/SUBSYSTEM:WINDOWS {stagingPath}\\osu!.exe");
+
+                // add icon to dotnet stub
+                runCommand("tools/rcedit-x64.exe", $"\"{stagingPath}\\osu!.exe\" --set-icon \"{iconPath}\"");
+            }
 
             write("Creating NuGet deployment package...");
             runCommand(nugetPath, $"pack {NuSpecName} -Version {version} -Properties Configuration=Deploy -OutputDirectory {stagingPath} -BasePath {stagingPath}");
@@ -118,20 +128,17 @@ namespace osu.Desktop.Deploy
             checkReleaseFiles();
 
             write("Running squirrel build...");
-            runCommand(squirrelPath, $"--releasify {stagingPath}\\{nupkgFilename(version)} --framework-version=net471 --setupIcon {iconPath} --icon {iconPath} {codeSigningCmd} --no-msi");
+            runCommand(squirrelPath, $"--releasify {stagingPath}\\{nupkgFilename(version)} -r {releasesPath} --setupIcon {iconPath} --icon {iconPath} {codeSigningCmd} --no-msi");
 
             //prune again to clean up before upload.
             pruneReleases();
 
             //rename setup to install.
-            File.Copy(Path.Combine(ReleasesFolder, "Setup.exe"), Path.Combine(ReleasesFolder, "install.exe"), true);
-            File.Delete(Path.Combine(ReleasesFolder, "Setup.exe"));
+            File.Copy(Path.Combine(releases_folder, "Setup.exe"), Path.Combine(releases_folder, "install.exe"), true);
+            File.Delete(Path.Combine(releases_folder, "Setup.exe"));
 
             if (interactive)
                 uploadBuild(version);
-
-            //reset assemblyinfo.
-            updateCsprojVersion("0.0.0");
 
             write("Done!", ConsoleColor.White);
             pauseIfInteractive();
@@ -159,11 +166,11 @@ namespace osu.Desktop.Deploy
 
             //ensure we have all files necessary
             foreach (var l in releaseLines)
-                if (!File.Exists(Path.Combine(ReleasesFolder, l.Filename)))
+                if (!File.Exists(Path.Combine(releases_folder, l.Filename)))
                     error($"Local file missing {l.Filename}");
         }
 
-        private static IEnumerable<ReleaseLine> getReleaseLines() => File.ReadAllLines(Path.Combine(ReleasesFolder, "RELEASES")).Select(l => new ReleaseLine(l));
+        private static IEnumerable<ReleaseLine> getReleaseLines() => File.ReadAllLines(Path.Combine(releases_folder, "RELEASES")).Select(l => new ReleaseLine(l));
 
         private static void pruneReleases()
         {
@@ -179,7 +186,7 @@ namespace osu.Desktop.Deploy
             foreach (var l in fulls)
             {
                 write($"- Removing old release {l.Filename}", ConsoleColor.Yellow);
-                File.Delete(Path.Combine(ReleasesFolder, l.Filename));
+                File.Delete(Path.Combine(releases_folder, l.Filename));
                 releaseLines.Remove(l);
             }
 
@@ -190,14 +197,14 @@ namespace osu.Desktop.Deploy
                 foreach (var l in deltas.Take(deltas.Length - keep_delta_count))
                 {
                     write($"- Removing old delta {l.Filename}", ConsoleColor.Yellow);
-                    File.Delete(Path.Combine(ReleasesFolder, l.Filename));
+                    File.Delete(Path.Combine(releases_folder, l.Filename));
                     releaseLines.Remove(l);
                 }
             }
 
             var lines = new List<string>();
             releaseLines.ForEach(l => lines.Add(l.ToString()));
-            File.WriteAllLines(Path.Combine(ReleasesFolder, "RELEASES"), lines);
+            File.WriteAllLines(Path.Combine(releases_folder, "RELEASES"), lines);
         }
 
         private static void uploadBuild(string version)
@@ -221,7 +228,7 @@ namespace osu.Desktop.Deploy
             req.AuthenticatedBlockingPerform();
 
             var assetUploadUrl = req.ResponseObject.UploadUrl.Replace("{?name,label}", "?name={0}");
-            foreach (var a in Directory.GetFiles(ReleasesFolder).Reverse()) //reverse to upload RELEASES first.
+            foreach (var a in Directory.GetFiles(releases_folder).Reverse()) //reverse to upload RELEASES first.
             {
                 write($"- Adding asset {a}...", ConsoleColor.Yellow);
                 var upload = new WebRequest(assetUploadUrl, Path.GetFileName(a))
@@ -276,7 +283,7 @@ namespace osu.Desktop.Deploy
 
             bool requireDownload = false;
 
-            if (!File.Exists(Path.Combine(ReleasesFolder, nupkgDistroFilename(lastRelease.Name))))
+            if (!File.Exists(Path.Combine(releases_folder, nupkgDistroFilename(lastRelease.Name))))
             {
                 write("Last version's package not found locally.", ConsoleColor.Red);
                 requireDownload = true;
@@ -285,7 +292,7 @@ namespace osu.Desktop.Deploy
             {
                 var lastReleases = new RawFileWebRequest($"{GitHubApiEndpoint}/assets/{releaseAsset.Id}");
                 lastReleases.AuthenticatedBlockingPerform();
-                if (File.ReadAllText(Path.Combine(ReleasesFolder, "RELEASES")) != lastReleases.ResponseString)
+                if (File.ReadAllText(Path.Combine(releases_folder, "RELEASES")) != lastReleases.ResponseString)
                 {
                     write("Server's RELEASES differed from ours.", ConsoleColor.Red);
                     requireDownload = true;
@@ -295,14 +302,14 @@ namespace osu.Desktop.Deploy
             if (!requireDownload) return;
 
             write("Refreshing local releases directory...");
-            refreshDirectory(ReleasesFolder);
+            refreshDirectory(releases_folder);
 
             foreach (var a in assets)
             {
-                if (a.Name.EndsWith(".exe")) continue;
+                if (a.Name.EndsWith(".exe") || a.Name.EndsWith(".app.zip")) continue;
 
                 write($"- Downloading {a.Name}...", ConsoleColor.Yellow);
-                new FileWebRequest(Path.Combine(ReleasesFolder, a.Name), $"{GitHubApiEndpoint}/assets/{a.Id}").AuthenticatedBlockingPerform();
+                new FileWebRequest(Path.Combine(releases_folder, a.Name), $"{GitHubApiEndpoint}/assets/{a.Id}").AuthenticatedBlockingPerform();
             }
         }
 
@@ -311,34 +318,6 @@ namespace osu.Desktop.Deploy
             if (Directory.Exists(directory))
                 Directory.Delete(directory, true);
             Directory.CreateDirectory(directory);
-        }
-
-        private static void updateCsprojVersion(string version)
-        {
-            var toUpdate = new[] { "<Version>", "<FileVersion>" };
-            string file = Path.Combine(ProjectName, $"{ProjectName}.csproj");
-
-            var l1 = File.ReadAllLines(file);
-            List<string> l2 = new List<string>();
-            foreach (var l in l1)
-            {
-                string line = l;
-
-                foreach (var tag in toUpdate)
-                {
-                    int startIndex = l.IndexOf(tag, StringComparison.InvariantCulture);
-                    if (startIndex == -1)
-                        continue;
-                    startIndex += tag.Length;
-
-                    int endIndex = l.IndexOf("<", startIndex, StringComparison.InvariantCulture);
-                    line = $"{l.Substring(0, startIndex)}{version}{l.Substring(endIndex)}";
-                }
-
-                l2.Add(line);
-            }
-
-            File.WriteAllLines(file, l2);
         }
 
         /// <summary>
@@ -351,11 +330,23 @@ namespace osu.Desktop.Deploy
             if (string.IsNullOrEmpty(path))
                 path = Environment.CurrentDirectory;
 
-            while (!File.Exists(Path.Combine(path, $"{SolutionName}.sln")))
+            while (true)
+            {
+                if (File.Exists(Path.Combine(path, $"{SolutionName}.sln")))
+                    break;
+
+                if (Directory.Exists(Path.Combine(path, "osu")) && File.Exists(Path.Combine(path, "osu", $"{SolutionName}.sln")))
+                {
+                    path = Path.Combine(path, "osu");
+                    break;
+                }
+
                 path = path.Remove(path.LastIndexOf(Path.DirectorySeparatorChar));
+            }
+
             path += Path.DirectorySeparatorChar;
 
-            Environment.CurrentDirectory = path;
+            solutionPath = path;
         }
 
         private static bool runCommand(string command, string args)
@@ -419,6 +410,7 @@ namespace osu.Desktop.Deploy
                     ps.AddScript($"Update-AppveyorBuild -Version \"{version}\"");
                     ps.Invoke();
                 }
+
                 return true;
             }
             catch
@@ -436,6 +428,7 @@ namespace osu.Desktop.Deploy
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.Write(sw.ElapsedMilliseconds.ToString().PadRight(8));
             }
+
             Console.ForegroundColor = col;
             Console.WriteLine(message);
         }
@@ -449,7 +442,8 @@ namespace osu.Desktop.Deploy
 
     internal class RawFileWebRequest : WebRequest
     {
-        public RawFileWebRequest(string url) : base(url)
+        public RawFileWebRequest(string url)
+            : base(url)
         {
         }
 
