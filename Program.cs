@@ -21,6 +21,7 @@ namespace osu.Desktop.Deploy
         private static string nugetPath => Path.Combine(packages, @"nuget.commandline\4.5.1\tools\NuGet.exe");
         private static string squirrelPath => Path.Combine(packages, @"squirrel.windows\1.8.0\tools\Squirrel.exe");
         private const string dotnet_path = @"C:\Program Files\dotnet\dotnet.exe";
+        private const string editbin_path = @"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.14.26428\bin\Hostx64\x64\editbin.exe";
 
         public static string StagingFolder = ConfigurationManager.AppSettings["StagingFolder"];
         public static string ReleasesFolder = ConfigurationManager.AppSettings["ReleasesFolder"];
@@ -107,7 +108,10 @@ namespace osu.Desktop.Deploy
 
             write("Running build process...");
             foreach (string targetName in TargetNames.Split(','))
+            {
                 runCommand(dotnet_path, $"publish -f netcoreapp2.1 -r win-x64 {ProjectName} -o {stagingPath} --configuration Release /p:Version={version}");
+                runCommand(editbin_path, $"/SUBSYSTEM:WINDOWS {stagingPath}\\osu!.exe");
+            }
 
             write("Creating NuGet deployment package...");
             runCommand(nugetPath, $"pack {NuSpecName} -Version {version} -Properties Configuration=Deploy -OutputDirectory {stagingPath} -BasePath {stagingPath}");
