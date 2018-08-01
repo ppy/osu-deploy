@@ -22,9 +22,9 @@ namespace osu.Desktop.Deploy
         private static string squirrelPath => Path.Combine(packages, @"squirrel.windows\1.8.0\tools\Squirrel.exe");
         private const string dotnet_path = @"C:\Program Files\dotnet\dotnet.exe";
         private const string editbin_path = @"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.14.26428\bin\Hostx64\x64\editbin.exe";
+        private const string staging_folder = "staging";
+        private const string releases_folder = "releases";
 
-        public static string StagingFolder = ConfigurationManager.AppSettings["StagingFolder"];
-        public static string ReleasesFolder = ConfigurationManager.AppSettings["ReleasesFolder"];
         public static string GitHubAccessToken = ConfigurationManager.AppSettings["GitHubAccessToken"];
         public static string GitHubUsername = ConfigurationManager.AppSettings["GitHubUsername"];
         public static string GitHubRepoName = ConfigurationManager.AppSettings["GitHubRepoName"];
@@ -70,20 +70,20 @@ namespace osu.Desktop.Deploy
 
             findSolutionPath();
 
-            if (!Directory.Exists(ReleasesFolder))
+            if (!Directory.Exists(releases_folder))
             {
                 write("WARNING: No release directory found. Make sure you want this!", ConsoleColor.Yellow);
-                Directory.CreateDirectory(ReleasesFolder);
+                Directory.CreateDirectory(releases_folder);
             }
 
             checkGitHubReleases();
 
-            refreshDirectory(StagingFolder);
+            refreshDirectory(staging_folder);
 
             //increment build number until we have a unique one.
             string verBase = DateTime.Now.ToString("yyyy.Mdd.");
             int increment = 0;
-            while (Directory.GetFiles(ReleasesFolder, $"*{verBase}{increment}*").Any())
+            while (Directory.GetFiles(releases_folder, $"*{verBase}{increment}*").Any())
                 increment++;
 
             string version = $"{verBase}{increment}";
@@ -128,8 +128,8 @@ namespace osu.Desktop.Deploy
             pruneReleases();
 
             //rename setup to install.
-            File.Copy(Path.Combine(ReleasesFolder, "Setup.exe"), Path.Combine(ReleasesFolder, "install.exe"), true);
-            File.Delete(Path.Combine(ReleasesFolder, "Setup.exe"));
+            File.Copy(Path.Combine(releases_folder, "Setup.exe"), Path.Combine(releases_folder, "install.exe"), true);
+            File.Delete(Path.Combine(releases_folder, "Setup.exe"));
 
             if (interactive)
                 uploadBuild(version);
@@ -160,11 +160,11 @@ namespace osu.Desktop.Deploy
 
             //ensure we have all files necessary
             foreach (var l in releaseLines)
-                if (!File.Exists(Path.Combine(ReleasesFolder, l.Filename)))
+                if (!File.Exists(Path.Combine(releases_folder, l.Filename)))
                     error($"Local file missing {l.Filename}");
         }
 
-        private static IEnumerable<ReleaseLine> getReleaseLines() => File.ReadAllLines(Path.Combine(ReleasesFolder, "RELEASES")).Select(l => new ReleaseLine(l));
+        private static IEnumerable<ReleaseLine> getReleaseLines() => File.ReadAllLines(Path.Combine(releases_folder, "RELEASES")).Select(l => new ReleaseLine(l));
 
         private static void pruneReleases()
         {
@@ -180,7 +180,7 @@ namespace osu.Desktop.Deploy
             foreach (var l in fulls)
             {
                 write($"- Removing old release {l.Filename}", ConsoleColor.Yellow);
-                File.Delete(Path.Combine(ReleasesFolder, l.Filename));
+                File.Delete(Path.Combine(releases_folder, l.Filename));
                 releaseLines.Remove(l);
             }
 
@@ -191,14 +191,14 @@ namespace osu.Desktop.Deploy
                 foreach (var l in deltas.Take(deltas.Length - keep_delta_count))
                 {
                     write($"- Removing old delta {l.Filename}", ConsoleColor.Yellow);
-                    File.Delete(Path.Combine(ReleasesFolder, l.Filename));
+                    File.Delete(Path.Combine(releases_folder, l.Filename));
                     releaseLines.Remove(l);
                 }
             }
 
             var lines = new List<string>();
             releaseLines.ForEach(l => lines.Add(l.ToString()));
-            File.WriteAllLines(Path.Combine(ReleasesFolder, "RELEASES"), lines);
+            File.WriteAllLines(Path.Combine(releases_folder, "RELEASES"), lines);
         }
 
         private static void uploadBuild(string version)
@@ -222,7 +222,7 @@ namespace osu.Desktop.Deploy
             req.AuthenticatedBlockingPerform();
 
             var assetUploadUrl = req.ResponseObject.UploadUrl.Replace("{?name,label}", "?name={0}");
-            foreach (var a in Directory.GetFiles(ReleasesFolder).Reverse()) //reverse to upload RELEASES first.
+            foreach (var a in Directory.GetFiles(releases_folder).Reverse()) //reverse to upload RELEASES first.
             {
                 write($"- Adding asset {a}...", ConsoleColor.Yellow);
                 var upload = new WebRequest(assetUploadUrl, Path.GetFileName(a))
@@ -277,7 +277,7 @@ namespace osu.Desktop.Deploy
 
             bool requireDownload = false;
 
-            if (!File.Exists(Path.Combine(ReleasesFolder, nupkgDistroFilename(lastRelease.Name))))
+            if (!File.Exists(Path.Combine(releases_folder, nupkgDistroFilename(lastRelease.Name))))
             {
                 write("Last version's package not found locally.", ConsoleColor.Red);
                 requireDownload = true;
@@ -286,7 +286,7 @@ namespace osu.Desktop.Deploy
             {
                 var lastReleases = new RawFileWebRequest($"{GitHubApiEndpoint}/assets/{releaseAsset.Id}");
                 lastReleases.AuthenticatedBlockingPerform();
-                if (File.ReadAllText(Path.Combine(ReleasesFolder, "RELEASES")) != lastReleases.ResponseString)
+                if (File.ReadAllText(Path.Combine(releases_folder, "RELEASES")) != lastReleases.ResponseString)
                 {
                     write("Server's RELEASES differed from ours.", ConsoleColor.Red);
                     requireDownload = true;
@@ -296,14 +296,14 @@ namespace osu.Desktop.Deploy
             if (!requireDownload) return;
 
             write("Refreshing local releases directory...");
-            refreshDirectory(ReleasesFolder);
+            refreshDirectory(releases_folder);
 
             foreach (var a in assets)
             {
                 if (a.Name.EndsWith(".exe") || a.Name.EndsWith(".app.zip")) continue;
 
                 write($"- Downloading {a.Name}...", ConsoleColor.Yellow);
-                new FileWebRequest(Path.Combine(ReleasesFolder, a.Name), $"{GitHubApiEndpoint}/assets/{a.Id}").AuthenticatedBlockingPerform();
+                new FileWebRequest(Path.Combine(releases_folder, a.Name), $"{GitHubApiEndpoint}/assets/{a.Id}").AuthenticatedBlockingPerform();
             }
         }
 
