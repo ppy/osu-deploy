@@ -21,7 +21,7 @@ namespace osu.Desktop.Deploy
         private static string nugetPath => Path.Combine(packages, @"nuget.commandline\4.5.1\tools\NuGet.exe");
         private static string squirrelPath => Path.Combine(packages, @"squirrel.windows\1.8.0\tools\Squirrel.exe");
         private const string dotnet_path = @"C:\Program Files\dotnet\dotnet.exe";
-        private const string editbin_path = @"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.14.26428\bin\Hostx64\x64\editbin.exe";
+
         private const string staging_folder = "staging";
         private const string releases_folder = "releases";
 
@@ -111,7 +111,9 @@ namespace osu.Desktop.Deploy
             foreach (string targetName in TargetNames.Split(','))
             {
                 runCommand(dotnet_path, $"publish -f netcoreapp2.1 -r win-x64 {ProjectName} -o {stagingPath} --configuration Release /p:Version={version}");
-                runCommand(editbin_path, $"/SUBSYSTEM:WINDOWS {stagingPath}\\osu!.exe");
+
+                // change subsystem of dotnet stub to WINDOWS (defaults to console; no way to change this yet https://github.com/dotnet/core-setup/issues/196)
+                runCommand("tools/editbin.exe", $"/SUBSYSTEM:WINDOWS {stagingPath}\\osu!.exe");
             }
 
             write("Creating NuGet deployment package...");
@@ -123,7 +125,7 @@ namespace osu.Desktop.Deploy
             checkReleaseFiles();
 
             write("Running squirrel build...");
-            runCommand(squirrelPath, $"--releasify {stagingPath}\\{nupkgFilename(version)} --setupIcon {iconPath} --icon {iconPath} {codeSigningCmd} --no-msi");
+            runCommand(squirrelPath, $"--releasify {stagingPath}\\{nupkgFilename(version)} -r {releasesPath} --setupIcon {iconPath} --icon {iconPath} {codeSigningCmd} --no-msi");
 
             //prune again to clean up before upload.
             pruneReleases();
@@ -341,7 +343,7 @@ namespace osu.Desktop.Deploy
 
             path += Path.DirectorySeparatorChar;
 
-            Environment.CurrentDirectory = path;
+            solutionPath = path;
         }
 
         private static bool runCommand(string command, string args)
