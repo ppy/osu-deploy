@@ -49,8 +49,9 @@ namespace osu.Desktop.Deploy
 
         private static string homeDir => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         private static string codeSigningCertPath => Path.Combine(homeDir, CodeSigningCertificate);
-        private static string solutionPath => Environment.CurrentDirectory;
-        private static string stagingPath => Path.Combine(solutionPath, StagingFolder);
+        private static string solutionPath;
+        private static string stagingPath => Path.Combine(Environment.CurrentDirectory, staging_folder);
+        private static string releasesPath => Path.Combine(Environment.CurrentDirectory, releases_folder);
         private static string iconPath => Path.Combine(solutionPath, ProjectName, IconName);
 
         private static string nupkgFilename(string ver) => $"{PackageName}.{ver}.nupkg";
