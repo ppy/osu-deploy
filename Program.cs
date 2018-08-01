@@ -114,6 +114,9 @@ namespace osu.Desktop.Deploy
 
                 // change subsystem of dotnet stub to WINDOWS (defaults to console; no way to change this yet https://github.com/dotnet/core-setup/issues/196)
                 runCommand("tools/editbin.exe", $"/SUBSYSTEM:WINDOWS {stagingPath}\\osu!.exe");
+
+                // add icon to dotnet stub
+                runCommand("tools/rcedit-x64.exe", $"\"{stagingPath}\\osu!.exe\" --set-icon \"{iconPath}\"");
             }
 
             write("Creating NuGet deployment package...");
