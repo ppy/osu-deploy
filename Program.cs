@@ -18,8 +18,8 @@ namespace osu.Desktop.Deploy
     internal static class Program
     {
         private static string packages => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
-        private static string nugetPath => Path.Combine(packages, @"nuget.commandline\4.5.1\tools\NuGet.exe");
-        private static string squirrelPath => Path.Combine(packages, @"squirrel.windows\1.8.0\tools\Squirrel.exe");
+        private static string nugetPath => Path.Combine(packages, @"nuget.commandline\4.7.0\tools\NuGet.exe");
+        private static string squirrelPath => Path.Combine(packages, @"ppy.squirrel.windows\1.8.0.3\tools\Squirrel.exe");
         private const string dotnet_path = @"C:\Program Files\dotnet\dotnet.exe";
 
         private const string staging_folder = "staging";
@@ -82,7 +82,7 @@ namespace osu.Desktop.Deploy
             refreshDirectory(staging_folder);
 
             //increment build number until we have a unique one.
-            string verBase = DateTime.Now.ToString("yyyy.Mdd.");
+            string verBase = DateTime.Now.AddDays(-7).ToString("yyyy.Mdd.");
             int increment = 0;
             while (Directory.GetFiles(releases_folder, $"*{verBase}{increment}*").Any())
                 increment++;
