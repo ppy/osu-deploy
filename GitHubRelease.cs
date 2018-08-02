@@ -11,7 +11,7 @@ namespace osu.Desktop.Deploy
         public int Id;
 
         [JsonProperty(@"tag_name")]
-        public string TagName => $"v{Name}";
+        public string TagName => $"{Name}";
 
         [JsonProperty(@"name")]
         public string Name;
