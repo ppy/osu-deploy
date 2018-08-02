@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Management.Automation;
 using Newtonsoft.Json;
+using osu.Framework;
 using osu.Framework.IO.Network;
 using FileWebRequest = osu.Framework.IO.Network.FileWebRequest;
 using WebRequest = osu.Framework.IO.Network.WebRequest;
@@ -20,53 +21,42 @@ namespace osu.Desktop.Deploy
         private static string packages => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
         private static string nugetPath => Path.Combine(packages, @"nuget.commandline\4.7.0\tools\NuGet.exe");
         private static string squirrelPath => Path.Combine(packages, @"ppy.squirrel.windows\1.8.0.3\tools\Squirrel.exe");
-        private const string dotnet_path = @"C:\Program Files\dotnet\dotnet.exe";
-
+        
         private const string staging_folder = "staging";
         private const string releases_folder = "releases";
-
-        public static string GitHubAccessToken = ConfigurationManager.AppSettings["GitHubAccessToken"];
-        public static string GitHubUsername = ConfigurationManager.AppSettings["GitHubUsername"];
-        public static string GitHubRepoName = ConfigurationManager.AppSettings["GitHubRepoName"];
-        public static string SolutionName = ConfigurationManager.AppSettings["SolutionName"];
-        public static string ProjectName = ConfigurationManager.AppSettings["ProjectName"];
-        public static string NuSpecName = ConfigurationManager.AppSettings["NuSpecName"];
-        public static string TargetNames = ConfigurationManager.AppSettings["TargetName"];
-        public static string PackageName = ConfigurationManager.AppSettings["PackageName"];
-        public static string IconName = ConfigurationManager.AppSettings["IconName"];
-        public static string CodeSigningCertificate = ConfigurationManager.AppSettings["CodeSigningCertificate"];
-
-        public static string GitHubApiEndpoint => $"https://api.github.com/repos/{GitHubUsername}/{GitHubRepoName}/releases";
-        public static string GitHubReleasePage => $"https://github.com/{GitHubUsername}/{GitHubRepoName}/releases";
-
+        
         /// <summary>
         /// How many previous build deltas we want to keep when publishing.
         /// </summary>
         private const int keep_delta_count = 4;
 
-        private static string codeSigningCmd =>
-            string.IsNullOrEmpty(codeSigningPassword) ? "" : $"-n \"/a /f {codeSigningCertPath} /p {codeSigningPassword} /t http://timestamp.comodoca.com/authenticode\"";
+        public static string GitHubAccessToken = ConfigurationManager.AppSettings["GitHubAccessToken"];
+        public static bool GitHubUpload = bool.Parse(ConfigurationManager.AppSettings["GitHubUpload"]);
+        public static string GitHubUsername = ConfigurationManager.AppSettings["GitHubUsername"];
+        public static string GitHubRepoName = ConfigurationManager.AppSettings["GitHubRepoName"];
+        public static string SolutionName = ConfigurationManager.AppSettings["SolutionName"];
+        public static string ProjectName = ConfigurationManager.AppSettings["ProjectName"];
+        public static string NuSpecName = ConfigurationManager.AppSettings["NuSpecName"];
+        public static bool IncrementVersion = bool.Parse(ConfigurationManager.AppSettings["IncrementVersion"]);
+        public static string PackageName = ConfigurationManager.AppSettings["PackageName"];
+        public static string IconName = ConfigurationManager.AppSettings["IconName"];
+        public static string CodeSigningCertificate = ConfigurationManager.AppSettings["CodeSigningCertificate"];
 
-        private static string homeDir => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        private static string codeSigningCertPath => Path.Combine(homeDir, CodeSigningCertificate);
+        public static string GitHubApiEndpoint => $"https://api.github.com/repos/{GitHubUsername}/{GitHubRepoName}/releases";
+
         private static string solutionPath;
+
         private static string stagingPath => Path.Combine(Environment.CurrentDirectory, staging_folder);
         private static string releasesPath => Path.Combine(Environment.CurrentDirectory, releases_folder);
         private static string iconPath => Path.Combine(solutionPath, ProjectName, IconName);
 
-        private static string nupkgFilename(string ver) => $"{PackageName}.{ver}.nupkg";
-        private static string nupkgDistroFilename(string ver) => $"{PackageName}-{ver}-full.nupkg";
-
-        private static readonly Stopwatch sw = new Stopwatch();
-
-        private static string codeSigningPassword;
+        private static readonly Stopwatch stopwatch = new Stopwatch();
 
         private static bool interactive;
 
         public static void Main(string[] args)
         {
             interactive = args.Length == 0;
-
             displayHeader();
 
             findSolutionPath();
@@ -77,70 +67,122 @@ namespace osu.Desktop.Deploy
                 Directory.CreateDirectory(releases_folder);
             }
 
-            checkGitHubReleases();
+            GitHubRelease lastRelease = null;
 
-            refreshDirectory(staging_folder);
+            if (canGitHub)
+            {
+                write("Checking GitHub releases...");
+                lastRelease = getLastGithubRelease();
+
+                if (lastRelease == null)
+                    write("This is the first GitHub release");
+                else
+                {
+                    write($"Last GitHub release was {lastRelease.Name}.");
+                    if (lastRelease.Draft)
+                        write("WARNING: This is a pending draft release! You might not want to push a build with this present.", ConsoleColor.Red);
+                }
+            }
 
             //increment build number until we have a unique one.
             string verBase = DateTime.Now.ToString("yyyy.Mdd.");
             int increment = 0;
-            while (Directory.GetFiles(releases_folder, $"*{verBase}{increment}*").Any())
-                increment++;
+
+            if (lastRelease?.TagName.StartsWith(verBase) ?? false)
+                increment = int.Parse(lastRelease.TagName.Split('.')[2]) + (IncrementVersion ? 1 : 0);
 
             string version = $"{verBase}{increment}";
 
             if (args.Length > 1 && !string.IsNullOrEmpty(args[1]))
                 version = args[1];
 
-            Console.ForegroundColor = ConsoleColor.White;
+            Console.ResetColor();
+            Console.WriteLine($"Increment Version:     {IncrementVersion}");
+            Console.WriteLine($"Signing Certificate:   {CodeSigningCertificate}");
+            Console.WriteLine($"Upload to GitHub:      {GitHubUpload}");
+            Console.WriteLine();
             Console.Write($"Ready to deploy {version}!");
+            
             pauseIfInteractive();
 
-            sw.Start();
+            stopwatch.Start();
 
-            if (!string.IsNullOrEmpty(CodeSigningCertificate))
-            {
-                Console.Write("Enter code signing password: ");
-                codeSigningPassword = args.Length > 0 ? args[0] : readLineMasked();
-            }
-
-            write("Updating AssemblyInfo...");
+            refreshDirectory(staging_folder);
             updateAppveyorVersion(version);
 
             write("Running build process...");
-            foreach (string targetName in TargetNames.Split(','))
+
+            switch (RuntimeInfo.OS)
             {
-                runCommand(dotnet_path, $"publish -f netcoreapp2.1 -r win-x64 {ProjectName} -o {stagingPath} --configuration Release /p:Version={version}");
+                case RuntimeInfo.Platform.Windows:
+                    getAssetsFromRelease(lastRelease);
 
-                // change subsystem of dotnet stub to WINDOWS (defaults to console; no way to change this yet https://github.com/dotnet/core-setup/issues/196)
-                runCommand("tools/editbin.exe", $"/SUBSYSTEM:WINDOWS {stagingPath}\\osu!.exe");
+                    runCommand("dotnet", $"publish -f netcoreapp2.1 -r win-x64 {ProjectName} -o {stagingPath} --configuration Release /p:Version={version}");
 
-                // add icon to dotnet stub
-                runCommand("tools/rcedit-x64.exe", $"\"{stagingPath}\\osu!.exe\" --set-icon \"{iconPath}\"");
+                    // change subsystem of dotnet stub to WINDOWS (defaults to console; no way to change this yet https://github.com/dotnet/core-setup/issues/196)
+                    runCommand("tools/editbin.exe", $"/SUBSYSTEM:WINDOWS {stagingPath}\\osu!.exe");
+
+                    // add icon to dotnet stub
+                    runCommand("tools/rcedit-x64.exe", $"\"{stagingPath}\\osu!.exe\" --set-icon \"{iconPath}\"");
+
+                    write("Creating NuGet deployment package...");
+                    runCommand(nugetPath, $"pack {NuSpecName} -Version {version} -Properties Configuration=Deploy -OutputDirectory {stagingPath} -BasePath {stagingPath}");
+
+                    // prune once before checking for files so we can avoid erroring on files which aren't even needed for this build.
+                    pruneReleases();
+
+                    checkReleaseFiles();
+
+                    write("Running squirrel build...");
+
+                    string codeSigningPassword = string.Empty;
+                    if (!string.IsNullOrEmpty(CodeSigningCertificate))
+                    {
+                        Console.Write("Enter code signing password: ");
+                        codeSigningPassword = args.Length > 0 ? args[0] : readLineMasked();
+                    }
+
+                    string codeSigningCertPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), CodeSigningCertificate);
+                    string codeSigningCmd = string.IsNullOrEmpty(codeSigningPassword)
+                        ? ""
+                        : $"-n \"/a /f {codeSigningCertPath} /p {codeSigningPassword} /t http://timestamp.comodoca.com/authenticode\"";
+                    
+                    string nupkgFilename = $"{PackageName}.{version}.nupkg";
+                    
+                    runCommand(squirrelPath, $"--releasify {stagingPath}\\{nupkgFilename} -r {releasesPath} --setupIcon {iconPath} --icon {iconPath} {codeSigningCmd} --no-msi");
+
+                    // prune again to clean up before upload.
+                    pruneReleases();
+
+                    // rename setup to install.
+                    File.Copy(Path.Combine(releases_folder, "Setup.exe"), Path.Combine(releases_folder, "install.exe"), true);
+                    File.Delete(Path.Combine(releases_folder, "Setup.exe"));
+                    break;
+                case RuntimeInfo.Platform.MacOsx:
+                    
+                    // unzip the template app, with all structure existing except for dotnet published content.
+                    runCommand("unzip", $"\"osu!.app-template.zip\" -d {stagingPath}", false);
+                    
+                    runCommand("dotnet", $"publish -r osx-x64 {ProjectName} --configuration Release -o {stagingPath}/osu!.app/Contents/MacOS /p:Version={version}");
+                    
+                    // correct permissions post-build. dotnet outputs 644 by default; we want 755.
+                    runCommand("chmod", $"-R 755 {stagingPath}/osu!.app");
+                    
+                    // sign using apple codesign
+                    runCommand("codesign", $"--deep --force --verify --verbose --sign \"{CodeSigningCertificate}\" {stagingPath}/osu!.app");
+                    
+                    // check codesign was successful
+                    runCommand("spctl", $"--assess -vvvv {stagingPath}/osu!.app");
+                    
+                    // package for distribution
+                    runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingPath}/osu!.app {releasesPath}/osu!.app.zip");
+                    break;
             }
 
-            write("Creating NuGet deployment package...");
-            runCommand(nugetPath, $"pack {NuSpecName} -Version {version} -Properties Configuration=Deploy -OutputDirectory {stagingPath} -BasePath {stagingPath}");
-
-            //prune once before checking for files so we can avoid erroring on files which aren't even needed for this build.
-            pruneReleases();
-
-            checkReleaseFiles();
-
-            write("Running squirrel build...");
-            runCommand(squirrelPath, $"--releasify {stagingPath}\\{nupkgFilename(version)} -r {releasesPath} --setupIcon {iconPath} --icon {iconPath} {codeSigningCmd} --no-msi");
-
-            //prune again to clean up before upload.
-            pruneReleases();
-
-            //rename setup to install.
-            File.Copy(Path.Combine(releases_folder, "Setup.exe"), Path.Combine(releases_folder, "install.exe"), true);
-            File.Delete(Path.Combine(releases_folder, "Setup.exe"));
-
-            if (interactive)
+            if (GitHubUpload)
                 uploadBuild(version);
 
-            write("Done!", ConsoleColor.White);
+            write("Done!");
             pauseIfInteractive();
         }
 
@@ -214,22 +256,36 @@ namespace osu.Desktop.Deploy
 
             write("Publishing to GitHub...");
 
-            write($"- Creating release {version}...", ConsoleColor.Yellow);
             var req = new JsonWebRequest<GitHubRelease>($"{GitHubApiEndpoint}")
             {
                 Method = HttpMethod.POST,
             };
-            req.AddRaw(JsonConvert.SerializeObject(new GitHubRelease
-            {
-                Name = version,
-                Draft = true,
-                PreRelease = true
-            }));
-            req.AuthenticatedBlockingPerform();
 
-            var assetUploadUrl = req.ResponseObject.UploadUrl.Replace("{?name,label}", "?name={0}");
+            GitHubRelease targetRelease = getLastGithubRelease();
+
+            if (targetRelease == null || targetRelease.TagName != version)
+            {
+                write($"- Creating release {version}...", ConsoleColor.Yellow);
+                req.AddRaw(JsonConvert.SerializeObject(new GitHubRelease
+                {
+                    Name = version,
+                    Draft = true,
+                }));
+                req.AuthenticatedBlockingPerform();
+
+                targetRelease = req.ResponseObject;
+            }
+            else
+            {
+                write($"- Adding to existing release {version}...", ConsoleColor.Yellow);
+            }
+
+            var assetUploadUrl = targetRelease.UploadUrl.Replace("{?name,label}", "?name={0}");
             foreach (var a in Directory.GetFiles(releases_folder).Reverse()) //reverse to upload RELEASES first.
             {
+                if (Path.GetFileName(a).StartsWith('.'))
+                    continue;
+
                 write($"- Adding asset {a}...", ConsoleColor.Yellow);
                 var upload = new WebRequest(assetUploadUrl, Path.GetFileName(a))
                 {
@@ -245,31 +301,29 @@ namespace osu.Desktop.Deploy
             openGitHubReleasePage();
         }
 
-        private static void openGitHubReleasePage() => Process.Start(GitHubReleasePage);
+        private static void openGitHubReleasePage() => Process.Start(new ProcessStartInfo
+        {
+            FileName = $"https://github.com/{GitHubUsername}/{GitHubRepoName}/releases",
+            UseShellExecute = true //see https://github.com/dotnet/corefx/issues/10361
+        });
 
         private static bool canGitHub => !string.IsNullOrEmpty(GitHubAccessToken);
 
-        private static void checkGitHubReleases()
+        private static GitHubRelease getLastGithubRelease()
         {
-            if (!canGitHub) return;
-
-            write("Checking GitHub releases...");
             var req = new JsonWebRequest<List<GitHubRelease>>($"{GitHubApiEndpoint}");
             req.AuthenticatedBlockingPerform();
+            return req.ResponseObject.FirstOrDefault();
+        }
 
-            var lastRelease = req.ResponseObject.FirstOrDefault();
-
-            if (lastRelease == null)
-                return;
-
-            if (lastRelease.Draft)
-            {
-                openGitHubReleasePage();
-                error("There's a pending draft release! You probably don't want to push a build with this present.");
-            }
-
+        /// <summary>
+        /// Download assets from a previous release into the releases folder.
+        /// </summary>
+        /// <param name="release"></param>
+        private static void getAssetsFromRelease(GitHubRelease release)
+        {
             //there's a previous release for this project.
-            var assetReq = new JsonWebRequest<List<GitHubObject>>($"{GitHubApiEndpoint}/{lastRelease.Id}/assets");
+            var assetReq = new JsonWebRequest<List<GitHubObject>>($"{GitHubApiEndpoint}/{release.Id}/assets");
             assetReq.AuthenticatedBlockingPerform();
             var assets = assetReq.ResponseObject;
 
@@ -279,11 +333,9 @@ namespace osu.Desktop.Deploy
             //if we don't have a RELEASES asset then the previous release likely wasn't a Squirrel one.
             if (releaseAsset == null) return;
 
-            write($"Last GitHub release was {lastRelease.Name}.");
-
             bool requireDownload = false;
 
-            if (!File.Exists(Path.Combine(releases_folder, nupkgDistroFilename(lastRelease.Name))))
+            if (!File.Exists(Path.Combine(releases_folder, $"{PackageName}-{release.Name}-full.nupkg")))
             {
                 write("Last version's package not found locally.", ConsoleColor.Red);
                 requireDownload = true;
@@ -349,11 +401,11 @@ namespace osu.Desktop.Deploy
             solutionPath = path;
         }
 
-        private static bool runCommand(string command, string args)
+        private static bool runCommand(string command, string args, bool useSolutionPath = true)
         {
             var psi = new ProcessStartInfo(command, args)
             {
-                WorkingDirectory = solutionPath,
+                WorkingDirectory = useSolutionPath ? solutionPath : Environment.CurrentDirectory,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -366,6 +418,8 @@ namespace osu.Desktop.Deploy
 
             string output = p.StandardOutput.ReadToEnd();
             output += p.StandardError.ReadToEnd();
+
+            p.WaitForExit();
 
             if (p.ExitCode == 0) return true;
 
@@ -423,10 +477,10 @@ namespace osu.Desktop.Deploy
 
         private static void write(string message, ConsoleColor col = ConsoleColor.Gray)
         {
-            if (sw.ElapsedMilliseconds > 0)
+            if (stopwatch.ElapsedMilliseconds > 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.Write(sw.ElapsedMilliseconds.ToString().PadRight(8));
+                Console.Write(stopwatch.ElapsedMilliseconds.ToString().PadRight(8));
             }
 
             Console.ForegroundColor = col;
