@@ -21,23 +21,23 @@ namespace osu.Desktop.Deploy
         private static string packages => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
         private static string nugetPath => Path.Combine(packages, @"nuget.commandline\4.7.0\tools\NuGet.exe");
         private static string squirrelPath => Path.Combine(packages, @"ppy.squirrel.windows\1.8.0.3\tools\Squirrel.exe");
-        
+
         private const string staging_folder = "staging";
         private const string releases_folder = "releases";
-        
+
         /// <summary>
         /// How many previous build deltas we want to keep when publishing.
         /// </summary>
         private const int keep_delta_count = 4;
 
         public static string GitHubAccessToken = ConfigurationManager.AppSettings["GitHubAccessToken"];
-        public static bool GitHubUpload = bool.Parse(ConfigurationManager.AppSettings["GitHubUpload"]);
+        public static bool GitHubUpload = bool.Parse(ConfigurationManager.AppSettings["GitHubUpload"] ?? "false");
         public static string GitHubUsername = ConfigurationManager.AppSettings["GitHubUsername"];
         public static string GitHubRepoName = ConfigurationManager.AppSettings["GitHubRepoName"];
         public static string SolutionName = ConfigurationManager.AppSettings["SolutionName"];
         public static string ProjectName = ConfigurationManager.AppSettings["ProjectName"];
         public static string NuSpecName = ConfigurationManager.AppSettings["NuSpecName"];
-        public static bool IncrementVersion = bool.Parse(ConfigurationManager.AppSettings["IncrementVersion"]);
+        public static bool IncrementVersion = bool.Parse(ConfigurationManager.AppSettings["IncrementVersion"] ?? "true");
         public static string PackageName = ConfigurationManager.AppSettings["PackageName"];
         public static string IconName = ConfigurationManager.AppSettings["IconName"];
         public static string CodeSigningCertificate = ConfigurationManager.AppSettings["CodeSigningCertificate"];
@@ -102,7 +102,7 @@ namespace osu.Desktop.Deploy
             Console.WriteLine($"Upload to GitHub:      {GitHubUpload}");
             Console.WriteLine();
             Console.Write($"Ready to deploy {version}!");
-            
+
             pauseIfInteractive();
 
             stopwatch.Start();
@@ -146,9 +146,9 @@ namespace osu.Desktop.Deploy
                     string codeSigningCmd = string.IsNullOrEmpty(codeSigningPassword)
                         ? ""
                         : $"-n \"/a /f {codeSigningCertPath} /p {codeSigningPassword} /t http://timestamp.comodoca.com/authenticode\"";
-                    
+
                     string nupkgFilename = $"{PackageName}.{version}.nupkg";
-                    
+
                     runCommand(squirrelPath, $"--releasify {stagingPath}\\{nupkgFilename} -r {releasesPath} --setupIcon {iconPath} --icon {iconPath} {codeSigningCmd} --no-msi");
 
                     // prune again to clean up before upload.
@@ -159,21 +159,21 @@ namespace osu.Desktop.Deploy
                     File.Delete(Path.Combine(releases_folder, "Setup.exe"));
                     break;
                 case RuntimeInfo.Platform.MacOsx:
-                    
+
                     // unzip the template app, with all structure existing except for dotnet published content.
                     runCommand("unzip", $"\"osu!.app-template.zip\" -d {stagingPath}", false);
-                    
+
                     runCommand("dotnet", $"publish -r osx-x64 {ProjectName} --configuration Release -o {stagingPath}/osu!.app/Contents/MacOS /p:Version={version}");
-                    
+
                     // correct permissions post-build. dotnet outputs 644 by default; we want 755.
                     runCommand("chmod", $"-R 755 {stagingPath}/osu!.app");
-                    
+
                     // sign using apple codesign
                     runCommand("codesign", $"--deep --force --verify --verbose --sign \"{CodeSigningCertificate}\" {stagingPath}/osu!.app");
-                    
+
                     // check codesign was successful
                     runCommand("spctl", $"--assess -vvvv {stagingPath}/osu!.app");
-                    
+
                     // package for distribution
                     runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingPath}/osu!.app {releasesPath}/osu!.app.zip");
                     break;
