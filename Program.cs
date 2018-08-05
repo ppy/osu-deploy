@@ -138,8 +138,13 @@ namespace osu.Desktop.Deploy
                     string codeSigningPassword = string.Empty;
                     if (!string.IsNullOrEmpty(CodeSigningCertificate))
                     {
-                        Console.Write("Enter code signing password: ");
-                        codeSigningPassword = args.Length > 0 ? args[0] : readLineMasked();
+                        if (args.Length > 0)
+                            codeSigningPassword = args[0];
+                        else
+                        {
+                            Console.Write("Enter code signing password: ");
+                            codeSigningPassword = readLineMasked();
+                        }
                     }
 
                     string codeSigningCertPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), CodeSigningCertificate);
