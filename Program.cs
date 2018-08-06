@@ -327,6 +327,8 @@ namespace osu.Desktop.Deploy
         /// <param name="release"></param>
         private static void getAssetsFromRelease(GitHubRelease release)
         {
+            if (!canGitHub) return;
+
             //there's a previous release for this project.
             var assetReq = new JsonWebRequest<List<GitHubObject>>($"{GitHubApiEndpoint}/{release.Id}/assets");
             assetReq.AuthenticatedBlockingPerform();
