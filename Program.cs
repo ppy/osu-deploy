@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2007-2018 ppy Pty Ltd <contact@ppy.sh>.
+// Copyright (c) 2007-2018 ppy Pty Ltd <contact@ppy.sh>.
 // Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
 
 using System;
@@ -181,6 +181,24 @@ namespace osu.Desktop.Deploy
 
                     // package for distribution
                     runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingPath}/osu!.app {releasesPath}/osu!.app.zip");
+                    break;
+                case RuntimeInfo.Platform.Linux:
+
+                    // need to add --self-contained flag for AppImage distribution.
+                    runCommand("dotnet", $"publish -r linux-x64 {ProjectName} --self-contained --configuration Release -o {stagingPath}/osu.AppDir  /p:Version={version}");
+
+                    runCommand("chmod", $"-R 755 {stagingPath}/osu.AppDir/*");
+
+                    runCommand("rsync", $"-av --progress AppDir/ {stagingPath}/osu.AppDir");
+
+                    // uses the official AppImage Tools for creating AppImages.
+                    // see: https://github.com/AppImage/AppImageKit
+                    // make sure its in the same path as osu-deploy.
+                    runCommand("wget", "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage");
+                    
+                    runCommand("chmod", "-R 755 ./appimagetool-x86_64.AppImage");
+
+                    runCommand("./appimagetool-x86_64.AppImage", $"--comp -s --sign-key {codeSigningCertPath} {stagingPath}/osu.AppDir");
                     break;
             }
 
