@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Management.Automation;
+using System.Net.Http;
 using Newtonsoft.Json;
 using osu.Framework;
 using osu.Framework.IO.Network;
@@ -19,8 +20,8 @@ namespace osu.Desktop.Deploy
     internal static class Program
     {
         private static string packages => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
-        private static string nugetPath => Path.Combine(packages, @"nuget.commandline\4.7.0\tools\NuGet.exe");
-        private static string squirrelPath => Path.Combine(packages, @"ppy.squirrel.windows\1.8.0.8\tools\Squirrel.exe");
+        private static string nugetPath => Path.Combine(packages, @"nuget.commandline\4.7.1\tools\NuGet.exe");
+        private static string squirrelPath => Path.Combine(packages, @"ppy.squirrel.windows\1.9.0.2\tools\Squirrel.exe");
 
         private const string staging_folder = "staging";
         private const string releases_folder = "releases";
@@ -263,7 +264,7 @@ namespace osu.Desktop.Deploy
 
             var req = new JsonWebRequest<GitHubRelease>($"{GitHubApiEndpoint}")
             {
-                Method = HttpMethod.POST,
+                Method = HttpMethod.Post,
             };
 
             GitHubRelease targetRelease = getLastGithubRelease();
@@ -294,7 +295,7 @@ namespace osu.Desktop.Deploy
                 write($"- Adding asset {a}...", ConsoleColor.Yellow);
                 var upload = new WebRequest(assetUploadUrl, Path.GetFileName(a))
                 {
-                    Method = HttpMethod.POST,
+                    Method = HttpMethod.Post,
                     Timeout = 240000,
                     ContentType = "application/octet-stream",
                 };
