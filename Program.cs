@@ -21,7 +21,7 @@ namespace osu.Desktop.Deploy
     {
         private static string packages => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
         private static string nugetPath => Path.Combine(packages, @"nuget.commandline\4.7.1\tools\NuGet.exe");
-        private static string squirrelPath => Path.Combine(packages, @"ppy.squirrel.windows\1.9.0.2\tools\Squirrel.exe");
+        private static string squirrelPath => Path.Combine(packages, @"ppy.squirrel.windows\1.9.0.3\tools\Squirrel.exe");
 
         private const string staging_folder = "staging";
         private const string releases_folder = "releases";
@@ -118,7 +118,7 @@ namespace osu.Desktop.Deploy
                 case RuntimeInfo.Platform.Windows:
                     getAssetsFromRelease(lastRelease);
 
-                    runCommand("dotnet", $"publish -f netcoreapp2.1 -r win-x64 {ProjectName} -o {stagingPath} --configuration Release /p:Version={version}");
+                    runCommand("dotnet", $"publish -f netcoreapp2.2 -r win-x64 {ProjectName} -o {stagingPath} --configuration Release /p:Version={version}");
 
                     // change subsystem of dotnet stub to WINDOWS (defaults to console; no way to change this yet https://github.com/dotnet/core-setup/issues/196)
                     runCommand("tools/editbin.exe", $"/SUBSYSTEM:WINDOWS {stagingPath}\\osu!.exe");
