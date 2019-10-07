@@ -183,6 +183,46 @@ namespace osu.Desktop.Deploy
                     // package for distribution
                     runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingPath}/osu!.app {releasesPath}/osu!.app.zip");
                     break;
+                    case RuntimeInfo.Platform.Linux:
+
+                    //runCommand("rm",$"-rf {stagingPath}/osu.AppDir/"); //we clean this for next build (for example: changing dir structure). Delete if unneded
+
+
+                    // need to add --self-contained flag for AppImage distribution.
+
+                    runCommand("dotnet", $"publish -r linux-x64 {ProjectName} --self-contained --configuration Release -o {stagingPath}/osu.AppDir/opt/osu  /p:Version={version}");
+
+
+
+                    runCommand("chmod", $"-R 755 {stagingPath}/osu.AppDir/opt/osu");
+
+
+
+                    runCommand("rsync", $"-av --progress AppDir/ {stagingPath}/osu.AppDir/");
+                    //TODO do we need to generate via code the appfiles?
+
+
+                    // uses the official AppImage Tools for creating AppImages.
+
+                    // see: https://github.com/AppImage/AppImageKit
+
+                    // make sure its in the same path as osu-deploy.
+
+                    runCommand("wget", "-nc https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage");
+
+                    
+
+                    runCommand("chmod", "-R 755 ./appimagetool-x86_64.AppImage");
+
+
+
+                    Environment.SetEnvironmentVariable("ARCH","x86_64"); //required for appimage
+                    runCommand("./appimagetool-x86_64.AppImage", $"--comp -s --sign-key {codeSigningCertPath} {stagingPath}/osu.AppDir");
+                    //cannot test this...
+
+                    
+                    //runCommand("./appimagetool-x86_64.AppImage", $" {stagingPath}/osu.AppDir");
+                    break;
             }
 
             if (GitHubUpload)
