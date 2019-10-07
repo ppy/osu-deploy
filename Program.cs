@@ -190,11 +190,11 @@ namespace osu.Desktop.Deploy
 
                     // need to add --self-contained flag for AppImage distribution.
 
-                    runCommand("dotnet", $"publish -r linux-x64 {ProjectName} --self-contained --configuration Release -o {stagingPath}/osu.AppDir/opt/osu  /p:Version={version}");
+                    runCommand("dotnet", $"publish -r linux-x64 {ProjectName} --self-contained --configuration Release -o {stagingPath}/osu.AppDir/  /p:Version={version}");
 
 
 
-                    runCommand("chmod", $"-R 755 {stagingPath}/osu.AppDir/opt/osu");
+                    runCommand("chmod", $"-R 755 {stagingPath}/osu.AppDir/");
 
 
 
