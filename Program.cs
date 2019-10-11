@@ -171,17 +171,32 @@ namespace osu.Desktop.Deploy
 
                     runCommand("dotnet", $"publish -r osx-x64 {ProjectName} --configuration Release -o {stagingPath}/osu!.app/Contents/MacOS /p:Version={version}");
 
+                    string stagingApp = $"{stagingPath}/osu!.app";
+                    string zippedApp = $"{releasesPath}/osu!.app.zip";
+
                     // correct permissions post-build. dotnet outputs 644 by default; we want 755.
-                    runCommand("chmod", $"-R 755 {stagingPath}/osu!.app");
+                    runCommand("chmod", $"-R 755 {stagingApp}");
 
                     // sign using apple codesign
-                    runCommand("codesign", $"--deep --force --verify --verbose --sign \"{CodeSigningCertificate}\" {stagingPath}/osu!.app");
+                    runCommand("codesign", $"--deep --force --verify --verbose --sign \"{CodeSigningCertificate}\" {stagingApp}");
 
                     // check codesign was successful
-                    runCommand("spctl", $"--assess -vvvv {stagingPath}/osu!.app");
-
+                    runCommand("spctl", $"--assess -vvvv {stagingApp}");
+                    
                     // package for distribution
-                    runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingPath}/osu!.app {releasesPath}/osu!.app.zip");
+                    runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingApp} {zippedApp}");
+                    
+                    // upload for notarisation
+                    runCommand("xcrun", $"altool --notarize-app --primary-bundle-id \"sh.ppy.osu.lazer\" --username \"{ConfigurationManager.AppSettings["AppleUsername"]}\" --password \"{ConfigurationManager.AppSettings["ApplePassword"]}\" --file {zippedApp}");
+                    
+                    // staple notarisation result
+                    runCommand("xcrun", $"stapler staple {stagingApp}");
+                    
+                    File.Delete(zippedApp);
+                    
+                    // repackage for distribution
+                    runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingApp} {zippedApp}");
+                    
                     break;
             }
 
@@ -411,6 +426,8 @@ namespace osu.Desktop.Deploy
 
         private static bool runCommand(string command, string args, bool useSolutionPath = true)
         {
+            write($"Running {command} {args}...");
+
             var psi = new ProcessStartInfo(command, args)
             {
                 WorkingDirectory = useSolutionPath ? solutionPath : Environment.CurrentDirectory,
