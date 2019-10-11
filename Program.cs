@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Management.Automation;
 using System.Net.Http;
+using System.Threading;
 using Newtonsoft.Json;
 using osu.Framework;
 using osu.Framework.IO.Network;
@@ -188,6 +189,10 @@ namespace osu.Desktop.Deploy
 
                     // upload for notarisation
                     runCommand("xcrun", $"altool --notarize-app --primary-bundle-id \"sh.ppy.osu.lazer\" --username \"{ConfigurationManager.AppSettings["AppleUsername"]}\" --password \"{ConfigurationManager.AppSettings["ApplePassword"]}\" --file {zippedApp}");
+
+                    // TODO: make this actually wait properly
+                    write("Waiting for notarisationt to complete..");
+                    Thread.Sleep(60000 * 10);
 
                     // staple notarisation result
                     runCommand("xcrun", $"stapler staple {stagingApp}");
