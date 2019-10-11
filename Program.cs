@@ -182,21 +182,21 @@ namespace osu.Desktop.Deploy
 
                     // check codesign was successful
                     runCommand("spctl", $"--assess -vvvv {stagingApp}");
-                    
+
                     // package for distribution
                     runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingApp} {zippedApp}");
-                    
+
                     // upload for notarisation
                     runCommand("xcrun", $"altool --notarize-app --primary-bundle-id \"sh.ppy.osu.lazer\" --username \"{ConfigurationManager.AppSettings["AppleUsername"]}\" --password \"{ConfigurationManager.AppSettings["ApplePassword"]}\" --file {zippedApp}");
-                    
+
                     // staple notarisation result
                     runCommand("xcrun", $"stapler staple {stagingApp}");
-                    
+
                     File.Delete(zippedApp);
-                    
+
                     // repackage for distribution
                     runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingApp} {zippedApp}");
-                    
+
                     break;
             }
 
