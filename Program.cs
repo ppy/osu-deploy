@@ -191,7 +191,7 @@ namespace osu.Desktop.Deploy
                     runCommand("xcrun", $"altool --notarize-app --primary-bundle-id \"sh.ppy.osu.lazer\" --username \"{ConfigurationManager.AppSettings["AppleUsername"]}\" --password \"{ConfigurationManager.AppSettings["ApplePassword"]}\" --file {zippedApp}");
 
                     // TODO: make this actually wait properly
-                    write("Waiting for notarisationt to complete..");
+                    write("Waiting for notarisation to complete..");
                     Thread.Sleep(60000 * 10);
 
                     // staple notarisation result
