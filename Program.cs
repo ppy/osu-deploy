@@ -372,7 +372,7 @@ namespace osu.Desktop.Deploy
             {
                 var lastReleases = new RawFileWebRequest($"{GitHubApiEndpoint}/assets/{releaseAsset.Id}");
                 lastReleases.AuthenticatedBlockingPerform();
-                if (File.ReadAllText(Path.Combine(releases_folder, "RELEASES")) != lastReleases.ResponseString)
+                if (File.ReadAllText(Path.Combine(releases_folder, "RELEASES")) != lastReleases.GetResponseString())
                 {
                     write("Server's RELEASES differed from ours.", ConsoleColor.Red);
                     requireDownload = true;
