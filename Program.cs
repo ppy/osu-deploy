@@ -119,7 +119,7 @@ namespace osu.Desktop.Deploy
                 case RuntimeInfo.Platform.Windows:
                     getAssetsFromRelease(lastRelease);
 
-                    runCommand("dotnet", $"publish -f netcoreapp3.0 -r win-x64 {ProjectName} -o {stagingPath} --configuration Release /p:Version={version}");
+                    runCommand("dotnet", $"publish -f netcoreapp3.1 -r win-x64 {ProjectName} -o {stagingPath} --configuration Release /p:Version={version}");
 
                     // change subsystem of dotnet stub to WINDOWS (defaults to console; no way to change this yet https://github.com/dotnet/core-setup/issues/196)
                     runCommand("tools/editbin.exe", $"/SUBSYSTEM:WINDOWS {stagingPath}\\osu!.exe");
