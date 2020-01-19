@@ -220,7 +220,10 @@ namespace osu.Desktop.Deploy
                                            "exec \"${EXEC}\" $@";
 
                     File.WriteAllText($"{stagingPath}/osu.AppDir/AppRun", appRunContent);
-
+                    
+                    // make AppRun executable
+                    runCommand("chmod", $"a+x {stagingPath}/osu.AppDir/AppRun");
+                    
                     // create Desktop file
                     string desktopFile = "# Desktop Entry Specification: https://standards.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html\n" +
                                          "[Desktop Entry]\n" +
