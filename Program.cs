@@ -213,11 +213,11 @@ namespace osu.Desktop.Deploy
                     runCommand("chmod", $"+x {stagingPath}/osu.AppDir/");
 
                     // create AppRun file
-                    string appRunContent = "#!/bin/sh" +
-                                           "HERE=\"$(dirname \"$(readlink -f \"${0}\")\")\"" +
-                                           "export PATH=\"${HERE}\"/usr/bin/:\"${PATH}\"" +
-                                           "EXEC=$(grep -e '^Exec=.*' \"${HERE}\"/*.desktop | head -n 1 | cut -d \"=\" -f 2 | cut -d \" \" -f 1)" +
-                                           "exec \"${EXEC}\" $@";
+                    string appRunContent = "#!/bin/sh\n" +
+                                           "HERE=\"$(dirname \"$(readlink -f \"${0}\")\")\"\n" +
+                                           "export PATH=\"${HERE}\"/usr/bin/:\"${PATH}\"\n" +
+                                           "EXEC=$(grep -e '^Exec=.*' \"${HERE}\"/*.desktop | head -n 1 | cut -d \"=\" -f 2 | cut -d \" \" -f 1)\n" +
+                                           "exec \"${EXEC}\" $@\n";
 
                     File.WriteAllText($"{stagingPath}/osu.AppDir/AppRun", appRunContent);
                     
@@ -255,7 +255,7 @@ namespace osu.Desktop.Deploy
                     runCommand("chmod", $"+x \"{Path.Combine(Environment.CurrentDirectory, "releases")}/osu-x86_64.AppImage\"");
                     
                     // copy update information
-                    File.Copy(Path.Combine(Environment.CurrentDirectory, "osu-x86_64.AppImage.zsync"), $"{releases_folder}/osu-x86_64.AppImage.zsync");
+                    File.Copy(Path.Combine(Environment.CurrentDirectory, "osu-x86_64.AppImage.zsync"), $"{releases_folder}/osu-x86_64.AppImage.zsync", true);
                     
                     break;
             }
