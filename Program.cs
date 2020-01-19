@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Management.Automation;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using Newtonsoft.Json;
@@ -202,6 +203,57 @@ namespace osu.Desktop.Deploy
                     // repackage for distribution
                     runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingApp} {zippedApp}");
 
+                    break;
+                
+                case RuntimeInfo.Platform.Linux:
+                    
+                    runCommand("dotnet", $"publish -f netcoreapp3.1 -r linux-x64 {ProjectName} -o {stagingPath}/osu.AppDir/usr/bin/ --configuration Release /p:Version={version} --self-contained");
+                    
+                    // mark output as executable
+                    runCommand("chmod", $"+x {stagingPath}/osu.AppDir/");
+
+                    // create AppRun file
+                    string appRunContent = "#!/bin/sh" +
+                                           "HERE=\"$(dirname \"$(readlink -f \"${0}\")\")\"" +
+                                           "export PATH=\"${HERE}\"/usr/bin/:\"${PATH}\"" +
+                                           "EXEC=$(grep -e '^Exec=.*' \"${HERE}\"/*.desktop | head -n 1 | cut -d \"=\" -f 2 | cut -d \" \" -f 1)" +
+                                           "exec \"${EXEC}\" $@";
+
+                    File.WriteAllText($"{stagingPath}/osu.AppDir/AppRun", appRunContent);
+
+                    // create Desktop file
+                    string desktopFile = "# Desktop Entry Specification: https://standards.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html\n" +
+                                         "[Desktop Entry]\n" +
+                                         "Type=Application\n" +
+                                         "Name=osu!\n" +
+                                         "Comment=Rhythm is just a click away.\n" +
+                                         "Icon=osu!\n" +
+                                         "Exec=osu!\n" +
+                                         "Path=~\n" +
+                                         "Terminal=true\n" +
+                                         "Categories=Game;\n";
+                    
+                    File.WriteAllText($"{stagingPath}/osu.AppDir/osu!.desktop", desktopFile);
+                    
+                    // copy png icon (for desktop file)
+                    File.Copy(Path.Combine(solutionPath, "assets/lazer.png"), $"{stagingPath}/osu.AppDir/osu!.png");
+
+                    // download appimagetool
+                    using (var client = new WebClient())
+                        client.DownloadFile("https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage", $"{stagingPath}/appimagetool.AppImage");
+                    
+                    // mark appimagetool as executable
+                    runCommand("chmod", $"a+x {stagingPath}/appimagetool.AppImage");
+
+                    // create AppImage itself                                       Here are metadata for the AppImage updater, it is based on Github Releases. 
+                    runCommand($"{stagingPath}/appimagetool.AppImage", $"\"{stagingPath}/osu.AppDir\" -u \"gh-releases-zsync|ppy|osu|latest|osu-*x86_64.AppImage.zsync\" \"{Path.Combine(Environment.CurrentDirectory, "releases")}/osu-x86_64.AppImage\"");
+                    
+                    // mark finally the osu! AppImage as executable -> Don't compress it.
+                    runCommand("chmod", $"+x \"{Path.Combine(Environment.CurrentDirectory, "releases")}/osu-x86_64.AppImage\"");
+                    
+                    // copy update information
+                    File.Copy(Path.Combine(Environment.CurrentDirectory, "osu-x86_64.AppImage.zsync"), $"{releases_folder}/osu-x86_64.AppImage.zsync");
+                    
                     break;
             }
 
@@ -448,9 +500,9 @@ namespace osu.Desktop.Deploy
 
             string output = p.StandardOutput.ReadToEnd();
             output += p.StandardError.ReadToEnd();
-
+            
             p.WaitForExit();
-
+            
             if (p.ExitCode == 0) return true;
 
             write(output);
