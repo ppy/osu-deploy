@@ -179,7 +179,7 @@ namespace osu.Desktop.Deploy
                     runCommand("chmod", $"-R 755 {stagingApp}");
 
                     // sign using apple codesign
-                    runCommand("codesign", $"--deep --force --verify -o runtime --verbose --sign \"{CodeSigningCertificate}\" {stagingApp}");
+                    runCommand("codesign", $"--deep --force --verify --entitlements osu.entitlements -o runtime --verbose --sign \"{CodeSigningCertificate}\" {stagingApp}");
 
                     // check codesign was successful
                     runCommand("spctl", $"--assess -vvvv {stagingApp}");
