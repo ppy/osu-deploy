@@ -21,8 +21,8 @@ namespace osu.Desktop.Deploy
     internal static class Program
     {
         private static string packages => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
-        private static string nugetPath => Path.Combine(packages, @"nuget.commandline\4.7.1\tools\NuGet.exe");
-        private static string squirrelPath => Path.Combine(packages, @"ppy.squirrel.windows\1.9.0.3\tools\Squirrel.exe");
+        private static string nugetPath => Path.Combine(packages, @"nuget.commandline\5.4.0\tools\NuGet.exe");
+        private static string squirrelPath => Path.Combine(packages, @"ppy.squirrel.windows\1.9.0.4\tools\Squirrel.exe");
 
         private const string staging_folder = "staging";
         private const string releases_folder = "releases";
