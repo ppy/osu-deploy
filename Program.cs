@@ -119,51 +119,59 @@ namespace osu.Desktop.Deploy
                 case RuntimeInfo.Platform.Windows:
                     getAssetsFromRelease(lastRelease);
 
-                    runCommand("dotnet", $"publish -f netcoreapp3.1 -r win-x64 {ProjectName} -o {stagingPath} --configuration Release /p:Version={version}");
-
-                    // change subsystem of dotnet stub to WINDOWS (defaults to console; no way to change this yet https://github.com/dotnet/core-setup/issues/196)
-                    runCommand("tools/editbin.exe", $"/SUBSYSTEM:WINDOWS {stagingPath}\\osu!.exe");
-
-                    // add icon to dotnet stub
-                    runCommand("tools/rcedit-x64.exe", $"\"{stagingPath}\\osu!.exe\" --set-icon \"{iconPath}\"");
-
-                    write("Creating NuGet deployment package...");
-                    runCommand(nugetPath, $"pack {NuSpecName} -Version {version} -Properties Configuration=Deploy -OutputDirectory {stagingPath} -BasePath {stagingPath}");
-
-                    // prune once before checking for files so we can avoid erroring on files which aren't even needed for this build.
-                    pruneReleases();
-
-                    checkReleaseFiles();
-
-                    write("Running squirrel build...");
-
-                    string codeSigningPassword = string.Empty;
-                    if (!string.IsNullOrEmpty(CodeSigningCertificate))
+                    foreach (var arch in new[] { "x64", "x86" })
                     {
-                        if (args.Length > 0)
-                            codeSigningPassword = args[0];
-                        else
+                        runCommand("dotnet", $"publish -f netcoreapp3.1 -r win-{arch} {ProjectName} -o {stagingPath} --configuration Release /p:Version={version}");
+
+                        // change subsystem of dotnet stub to WINDOWS (defaults to console; no way to change this yet https://github.com/dotnet/core-setup/issues/196)
+                        runCommand("tools/editbin.exe", $"/SUBSYSTEM:WINDOWS {stagingPath}\\osu!.exe");
+
+                        // add icon to dotnet stub
+                        runCommand("tools/rcedit-x64.exe", $"\"{stagingPath}\\osu!.exe\" --set-icon \"{iconPath}\"");
+
+                        write("Creating NuGet deployment package...");
+                        runCommand(nugetPath, $"pack {NuSpecName} -Version {version} -Properties Configuration=Deploy -OutputDirectory {stagingPath} -BasePath {stagingPath}");
+
+                        // prune once before checking for files so we can avoid erroring on files which aren't even needed for this build.
+                        pruneReleases();
+
+                        checkReleaseFiles();
+
+                        write("Running squirrel build...");
+
+                        string codeSigningPassword = string.Empty;
+                        if (!string.IsNullOrEmpty(CodeSigningCertificate))
                         {
-                            Console.Write("Enter code signing password: ");
-                            codeSigningPassword = readLineMasked();
+                            if (args.Length > 0)
+                                codeSigningPassword = args[0];
+                            else
+                            {
+                                Console.Write("Enter code signing password: ");
+                                codeSigningPassword = readLineMasked();
+                            }
                         }
+
+                        string codeSigningCertPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), CodeSigningCertificate);
+                        string codeSigningCmd = string.IsNullOrEmpty(codeSigningPassword)
+                            ? ""
+                            : $"-n \"/a /f {codeSigningCertPath} /p {codeSigningPassword} /t http://timestamp.comodoca.com/authenticode\"";
+
+                        string nupkgFilename = $"{PackageName}.{version}.nupkg";
+
+                        string nupkgFilenameWithArch = $"{PackageName}-{arch}.{version}.nupkg";
+
+                        File.Move(Path.Combine(stagingPath, nupkgFilename), Path.Combine(stagingPath, nupkgFilenameWithArch));
+
+                        runCommand(squirrelPath, $"--releasify {stagingPath}\\{nupkgFilenameWithArch} -r {releasesPath} --setupIcon {iconPath} --icon {iconPath} {codeSigningCmd} --no-msi");
+
+                        // prune again to clean up before upload.
+                        pruneReleases();
+
+                        // rename setup to install.
+                        File.Copy(Path.Combine(releases_folder, "Setup.exe"), Path.Combine(releases_folder, arch == "x64" ? "install.exe" : "install (32-bit).exe"), true);
+                        File.Delete(Path.Combine(releases_folder, "Setup.exe"));
                     }
 
-                    string codeSigningCertPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), CodeSigningCertificate);
-                    string codeSigningCmd = string.IsNullOrEmpty(codeSigningPassword)
-                        ? ""
-                        : $"-n \"/a /f {codeSigningCertPath} /p {codeSigningPassword} /t http://timestamp.comodoca.com/authenticode\"";
-
-                    string nupkgFilename = $"{PackageName}.{version}.nupkg";
-
-                    runCommand(squirrelPath, $"--releasify {stagingPath}\\{nupkgFilename} -r {releasesPath} --setupIcon {iconPath} --icon {iconPath} {codeSigningCmd} --no-msi");
-
-                    // prune again to clean up before upload.
-                    pruneReleases();
-
-                    // rename setup to install.
-                    File.Copy(Path.Combine(releases_folder, "Setup.exe"), Path.Combine(releases_folder, "install.exe"), true);
-                    File.Delete(Path.Combine(releases_folder, "Setup.exe"));
                     break;
                 case RuntimeInfo.Platform.MacOsx:
 
