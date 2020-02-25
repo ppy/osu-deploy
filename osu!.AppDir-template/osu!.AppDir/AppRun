@@ -26,7 +26,6 @@ Parameters:
     --ld-debug-libs     :   Set LD_DEBUG to libs
     --no-launch         :   Don't launch osu!lazer
 
-NOTE:
     Once all the script parameters are processed , the script will send the rest parameters to osu!lazer.
 EOF
 }
@@ -47,6 +46,7 @@ putok(){
     echo "[$APPNAME][`date +%T`]\33[32m[OK]\t\t$msg\33[0m"
 }
 presets(){
+    #NOTE:Distribution-specific checks should be avoided as much as possible.
     #detect which distro the user uses
     case $DISTRO in
         ubuntu)
@@ -59,26 +59,25 @@ presets(){
             puterror "Unknown distro! Using default values.";
             ;;
         *)
-            putwarn "Using default values because we don't know where $DISTRO normally puts their libraries in.";
             ;;
     esac
 }
 env_sets(){
     lazer_args="`sed -n '1,1p' $lazer_arg_file`"
-    putinfo "running osu! with args: $lazer_args"
-    if [ $no_launch -eq 1 ];then putinfo "stopped because --no-launch was given";exit 0;fi;
-    if [ $ld_debug -eq 1 ];then putinfo "set LD_DEBUG to libs";export LD_DEBUG=libs;fi;
+    putinfo "Running osu! with args:$lazer_args"
+    if [ $no_launch -eq 1 ];then putinfo "Stopped because --no-launch was given";exit 0;fi;
+    if [ $ld_debug -eq 1 ];then putinfo "Set LD_DEBUG to libs";export LD_DEBUG=libs;fi;
 }
 symlink(){
     origin="$1";
     target="$2";
     if [ -f "$target" ];then
-        putwarn "target file \"$target\" already exists! skipping...";
+        putwarn "Target file \"$target\" already exists! Skipping...";
         return 0;
     fi
 
     if [ -z "$origin" ] || [ -z "$target" ];then
-        puterror "origin or target file missing!";
+        puterror "Origin or target filename not given!";
         return 1;
     else
         ln $origin $target -s
@@ -94,10 +93,10 @@ symlink(){
 findfile(){
     path="$1";
     if [ ! -f "$1" ];then
-        puterror "file \"$1\" not found!";
+        puterror "File \"$1\" not found!";
         return 1;
     else
-        putok "file \"$1\" found!";
+        putok "File \"$1\" found!";
         return 0;
     fi
 }
@@ -119,7 +118,7 @@ find_and_symlink(){
         if [ -z "$filename_origin" ];then
             return 1;
         else
-            putinfo "trying to create a symlink from $filename_origin to $LOCAL_LIB_PATH/$linkedname";
+            putinfo "Trying to create a symlink from \"$filename_origin\" to \"$LOCAL_LIB_PATH/$linkedname\"";
             symlink "$filename_origin" "$LOCAL_LIB_PATH/$linkedname"
             if [ "$?" != 0 ];then return 1;fi;
         fi
@@ -130,14 +129,13 @@ find_and_symlink(){
 }
 check_ffmpeg_libs(){
     mkdir -vp "$LOCAL_LIB_PATH";
-    putinfo "detecting ffmpeg libs..";
+    putinfo "Detecting ffmpeg libs..";
     #ffmpeg it self
     if [ -z "$(which ffmpeg)" ];then
-        puterror "ffmpeg not found! Please install it before you launch osu!";
+        putwarn "FFmpeg not found! This will cause video playback issues!";
         if [ ! -z "$(which zenity)" ];then
-            zenity --error --ellipsize --text="ffmpeg not found! Please install it before you launch osu!";
+            zenity --warning --ellipsize --text="FFmpeg not found! This will cause video playback issues!";
         fi
-        exit 1;
     fi
 
     #libavformat
@@ -154,7 +152,7 @@ check_ffmpeg_libs(){
     if [ $? != 0 ];then puterror "Unable to create nessrary symlink!Please check your ffmpeg installation!" ;exit 1;fi;
 
     export LD_LIBRARY_PATH="$LOCAL_LIB_PATH/";
-    putinfo "set LD_LIBRARY_PATH to $LD_LIBRARY_PATH ";
+    putinfo "Set LD_LIBRARY_PATH to $LD_LIBRARY_PATH ";
 }
 
 if [ ! -z "$APPIMAGE" ] && [ ! -z "$APPDIR" ]; then
@@ -173,9 +171,8 @@ while [ $# -gt 0 ]; do
             ;;
         --distro)
             shift;
-            if [ -z "$1" ];then puterror "no distro name was given";exit 1;fi
+            if [ -z "$1" ];then puterror "No distro name was given";exit 1;fi
             DISTRO="$1";
-            debug=1;
             shift;
             ;;
         --ld-debug-libs)
@@ -187,7 +184,7 @@ while [ $# -gt 0 ]; do
             shift;
             ;;
         *)
-            putwarn "unrecognized option $arg ,putting into lazer args...";
+            putwarn "Unrecognized option $arg , adding to lazer args...";
             sed -i "s/\$/ $arg/" "$lazer_arg_file";
             shift;
             ;;
@@ -197,7 +194,7 @@ done
 presets;
 putinfo "Running as user `whoami`(`id -u`) on $DISTRO(`uname -a`), ARCH= $SYSARCH ,  PWD = $PWD , APPIMAGE = $APPIMAGE , APPDIR = $APPDIR ,library path prefix=$libDir_prefix"
 check_ffmpeg_libs;
-putok "ready to go!"
+putok "Ready to go!"
 
 HERE="$(dirname "$(readlink -f "${0}")")"
 export PATH="${HERE}"/usr/bin/:"${PATH}"
