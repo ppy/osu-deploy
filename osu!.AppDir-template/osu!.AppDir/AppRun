@@ -7,8 +7,8 @@ local_lib_path="$HOME/.local/osu_libs"
 ld_debug="";no_launch=0;
 
 libDir_prefix="/usr/lib/$SYSARCH-linux-gnu"
-DISTRO=`cat /etc/os-release | grep "ID" | cut -d '=' -f2 | sed -n '1,1p'`
-if [ -z "$distro" ];then DISTRO="unknown";fi;
+distro=`cat /etc/os-release | grep "ID" | cut -d '=' -f2 | sed -n '1,1p'`
+if [ -z "$distro" ];then distro="unknown";fi;
 
 lazer_args=" "
 lazer_arg_file="$local_lib_path/lazer_args.tmp"
@@ -173,7 +173,7 @@ while [ $# -gt 0 ]; do
             ;;
         --distro | -d)
             if [ -z "$value" ];then puterror "No distro name was given";exit 1;fi
-            DISTRO="$value";
+            distro="$value";
             shift;
             ;;
         --ld-debug | -l)
