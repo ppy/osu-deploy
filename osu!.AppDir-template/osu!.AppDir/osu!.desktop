@@ -1,0 +1,10 @@
+# Desktop Entry Specification: https://standards.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html
+[Desktop Entry]
+Type=Application
+Name=osu!
+Comment=Rhythm is just a *click* away.
+Icon=osu!
+Exec=osu!
+Path=~
+Terminal=true
+Categories=Game;

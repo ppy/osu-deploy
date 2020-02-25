@@ -1,0 +1,206 @@
+#!/bin/sh
+#readonly variables , default values etc.
+readonly APPNAME=`basename "$0"`
+readonly LOCAL_LIB_PATH="$HOME/.local/osu_libs"
+readonly SYSARCH=`uname -m`
+
+ld_debug=0;no_launch=0;
+
+libDir_prefix="/usr/lib/$SYSARCH-linux-gnu"
+DISTRO=`cat /etc/os-release | grep "ID" | cut -d '=' -f2 | sed -n '1,1p'`
+if [ -z "$DISTRO" ];then DISTRO="unknown";fi;
+
+lazer_args=" "
+lazer_arg_file="$LOCAL_LIB_PATH/lazer_args.tmp"
+echo " " > "$lazer_arg_file" #it seems that it's the only way to implement passing unrecognized args to lazer
+
+#functions
+usage(){
+cat <<EOF
+Usage:
+    $APPNAME [args..] [...]
+
+Parameters:
+    --help              :   Shows what you are reading now :P
+    --distro <name>     :   Overrides the value of \$DISTRO
+    --ld-debug-libs     :   Set LD_DEBUG to libs
+    --no-launch         :   Don't launch osu!lazer
+
+NOTE:
+    Once all the script parameters are processed , the script will send the rest parameters to osu!lazer.
+EOF
+}
+putinfo(){
+    msg="$1";
+    echo "[$APPNAME][`date +%T`][INFO]\t$msg\33[0m"
+}
+puterror(){
+    msg="$1";
+    echo "[$APPNAME][`date +%T`]\33[31m[ERRO]\t$msg\33[0m"
+}
+putwarn(){
+    msg="$1";
+    echo "[$APPNAME][`date +%T`]\33[33m[WARN]\t$msg\33[0m"
+}
+putok(){
+    msg="$1";
+    echo "[$APPNAME][`date +%T`]\33[32m[OK]\t\t$msg\33[0m"
+}
+presets(){
+    #detect which distro the user uses
+    case $DISTRO in
+        ubuntu)
+            libDir_prefix="/usr/lib/$SYSARCH-linux-gnu";
+            ;;
+        manjaro)
+            libDir_prefix="/usr/lib";
+            ;;
+        unknown)
+            puterror "Unknown distro! Using default values.";
+            ;;
+        *)
+            putwarn "Using default values because we don't know where $DISTRO normally puts their libraries in.";
+            ;;
+    esac
+}
+env_sets(){
+    lazer_args="`sed -n '1,1p' $lazer_arg_file`"
+    putinfo "running osu! with args: $lazer_args"
+    if [ $no_launch -eq 1 ];then putinfo "stopped because --no-launch was given";exit 0;fi;
+    if [ $ld_debug -eq 1 ];then putinfo "set LD_DEBUG to libs";export LD_DEBUG=libs;fi;
+}
+symlink(){
+    origin="$1";
+    target="$2";
+    if [ -f "$target" ];then
+        putwarn "target file \"$target\" already exists! skipping...";
+        return 0;
+    fi
+
+    if [ -z "$origin" ] || [ -z "$target" ];then
+        puterror "origin or target file missing!";
+        return 1;
+    else
+        ln $origin $target -s
+        if [ ! -h "$target" ];then
+            puterror "$origin -> $target failed!";
+            return 1;
+        else
+            putok "$origin -> $target success!";
+            return 0;
+        fi
+    fi
+}
+findfile(){
+    path="$1";
+    if [ ! -f "$1" ];then
+        puterror "file \"$1\" not found!";
+        return 1;
+    else
+        putok "file \"$1\" found!";
+        return 0;
+    fi
+}
+do_nothing(){
+    echo "do nothing" > /dev/null ;
+}
+find_and_symlink(){
+    path="$1";
+    search_name="$2";
+    linkedname="$3";
+    if [ -z "$linkedname" ];then
+        putwarn "\"linkedname\" not given,using \"search_name\"($search_name) instead";
+        linkedname="$search_name";
+    fi
+
+    findfile "$path"; # exists?
+    if [ $? != 0 ];then #no
+        filename_origin=`ls "$libDir_prefix/" | grep "$search_name" | awk '{print i$0}' i="$libDir_prefix/" | sed -n '1,1p'`
+        if [ -z "$filename_origin" ];then
+            return 1;
+        else
+            putinfo "trying to create a symlink from $filename_origin to $LOCAL_LIB_PATH/$linkedname";
+            symlink "$filename_origin" "$LOCAL_LIB_PATH/$linkedname"
+            if [ "$?" != 0 ];then return 1;fi;
+        fi
+    else #yes
+        do_nothing;
+    fi
+    return 0;
+}
+check_ffmpeg_libs(){
+    mkdir -vp "$LOCAL_LIB_PATH";
+    putinfo "detecting ffmpeg libs..";
+    #ffmpeg it self
+    if [ -z "$(which ffmpeg)" ];then
+        puterror "ffmpeg not found! Please install it before you launch osu!";
+        if [ ! -z "$(which zenity)" ];then
+            zenity --error --ellipsize --text="ffmpeg not found! Please install it before you launch osu!";
+        fi
+        exit 1;
+    fi
+
+    #libavformat
+    find_and_symlink "$libDir_prefix/libavformat.so" "libavformat" "libavformat.so";
+    if [ $? != 0 ];then puterror "Unable to create nessrary symlink!Please check your ffmpeg installation!" ;exit 1;fi;
+    #libavcodec
+    find_and_symlink "$libDir_prefix/libavcodec.so" "libavcodec" "libavcodec.so";
+    if [ $? != 0 ];then puterror "Unable to create nessrary symlink!Please check your ffmpeg installation!" ;exit 1;fi;
+    #libavutil
+    find_and_symlink "$libDir_prefix/libavutil.so" "libavutil" "libavutil.so";
+    if [ $? != 0 ];then puterror "Unable to create nessrary symlink!Please check your ffmpeg installation!" ;exit 1;fi;
+    #libswscale
+    find_and_symlink "$libDir_prefix/libswscale.so" "libswscale" "libswscale.so";
+    if [ $? != 0 ];then puterror "Unable to create nessrary symlink!Please check your ffmpeg installation!" ;exit 1;fi;
+
+    export LD_LIBRARY_PATH="$LOCAL_LIB_PATH/";
+    putinfo "set LD_LIBRARY_PATH to $LD_LIBRARY_PATH ";
+}
+
+if [ ! -z "$APPIMAGE" ] && [ ! -z "$APPDIR" ]; then
+    MD5=$(echo -n "file://$APPIMAGE" | md5sum | cut -d' ' -f1)
+    cp "$APPDIR/osu!.png" "$HOME/.cache/thumbnails/normal/$MD5.png"
+    cp "$APPDIR/osu!.png" "$HOME/.cache/thumbnails/large/$MD5.png"
+    xdg-icon-resource forceupdate
+fi
+
+while [ $# -gt 0 ]; do
+    arg=$1
+    case $arg in
+        --help)
+            usage;
+            exit 0;
+            ;;
+        --distro)
+            shift;
+            if [ -z "$1" ];then puterror "no distro name was given";exit 1;fi
+            DISTRO="$1";
+            debug=1;
+            shift;
+            ;;
+        --ld-debug-libs)
+            ld_debug=1;
+            shift;
+            ;;
+        --no-launch)
+            no_launch=1;
+            shift;
+            ;;
+        *)
+            putwarn "unrecognized option $arg ,putting into lazer args...";
+            sed -i "s/\$/ $arg/" "$lazer_arg_file";
+            shift;
+            ;;
+    esac
+done
+
+presets;
+putinfo "Running as user `whoami`(`id -u`) on $DISTRO(`uname -a`), ARCH= $SYSARCH ,  PWD = $PWD , APPIMAGE = $APPIMAGE , APPDIR = $APPDIR ,library path prefix=$libDir_prefix"
+check_ffmpeg_libs;
+putok "ready to go!"
+
+HERE="$(dirname "$(readlink -f "${0}")")"
+export PATH="${HERE}"/usr/bin/:"${PATH}"
+EXEC=$(grep -e '^Exec=.*' "${HERE}"/*.desktop | head -n 1 | cut -d "=" -f 2 | cut -d " " -f 1)
+env_sets;
+exec "${EXEC}" $lazer_args
