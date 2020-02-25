@@ -164,7 +164,7 @@ if [ ! -z "$APPIMAGE" ] && [ ! -z "$APPDIR" ]; then
 fi
 
 while [ $# -gt 0 ]; do
-    arg=`echo $1 | cut -d "=" -f1`
+    arg=`echo -n "$1" | cut -d "=" -f1`
     value=`echo $1 | cut -d "=" -f2 --only-delimited`
     case $arg in
         --help | -h)
