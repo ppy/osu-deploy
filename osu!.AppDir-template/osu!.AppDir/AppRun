@@ -1,32 +1,33 @@
 #!/bin/sh
 #readonly variables , default values etc.
 readonly APPNAME=`basename "$0"`
-readonly LOCAL_LIB_PATH="$HOME/.local/osu_libs"
 readonly SYSARCH=`uname -m`
 
-ld_debug=0;no_launch=0;
+local_lib_path="$HOME/.local/osu_libs"
+ld_debug="";no_launch=0;
 
 libDir_prefix="/usr/lib/$SYSARCH-linux-gnu"
 DISTRO=`cat /etc/os-release | grep "ID" | cut -d '=' -f2 | sed -n '1,1p'`
-if [ -z "$DISTRO" ];then DISTRO="unknown";fi;
+if [ -z "$distro" ];then DISTRO="unknown";fi;
 
 lazer_args=" "
-lazer_arg_file="$LOCAL_LIB_PATH/lazer_args.tmp"
+lazer_arg_file="$local_lib_path/lazer_args.tmp"
 echo " " > "$lazer_arg_file" #it seems that it's the only way to implement passing unrecognized args to lazer
 
 #functions
 usage(){
 cat <<EOF
 Usage:
-    $APPNAME [args..] [...]
+    $APPNAME [OPTION]... [...]
 
-Parameters:
-    --help              :   Shows what you are reading now :P
-    --distro <name>     :   Overrides the value of \$DISTRO
-    --ld-debug-libs     :   Set LD_DEBUG to libs
-    --no-launch         :   Don't launch osu!lazer
+Mandatory arguments to long options are mandatory for short options too.
+    -h, --help      :   Shows what you are reading now :P
+    -n, --no-launch :   Don't launch osu!lazer
+    -d, --distro=<name>  :   Override the value of \$distro
+    -l, --ld-debug=<arg> :   Set LD_DEBUG value
+    -L, --ld-library-path=<path> : Override the value of \$LD_LIBRARY_PATH , use absolute path
 
-    Once all the script parameters are processed , the script will send the rest parameters to osu!lazer.
+Once all the script parameters are processed , the script will send the rest parameters to osu!lazer.
 EOF
 }
 putinfo(){
@@ -48,7 +49,7 @@ putok(){
 presets(){
     #NOTE:Distribution-specific checks should be avoided as much as possible.
     #detect which distro the user uses
-    case $DISTRO in
+    case $distro in
         ubuntu)
             libDir_prefix="/usr/lib/$SYSARCH-linux-gnu";
             ;;
@@ -66,7 +67,7 @@ env_sets(){
     lazer_args="`sed -n '1,1p' $lazer_arg_file`"
     putinfo "Running osu! with args:$lazer_args"
     if [ $no_launch -eq 1 ];then putinfo "Stopped because --no-launch was given";exit 0;fi;
-    if [ $ld_debug -eq 1 ];then putinfo "Set LD_DEBUG to libs";export LD_DEBUG=libs;fi;
+    if [ ! -z $ld_debug ];then putinfo "Set LD_DEBUG to $ld_debug";export LD_DEBUG="$ld_debug";fi;
 }
 symlink(){
     origin="$1";
@@ -118,8 +119,8 @@ find_and_symlink(){
         if [ -z "$filename_origin" ];then
             return 1;
         else
-            putinfo "Trying to create a symlink from \"$filename_origin\" to \"$LOCAL_LIB_PATH/$linkedname\"";
-            symlink "$filename_origin" "$LOCAL_LIB_PATH/$linkedname"
+            putinfo "Trying to create a symlink from \"$filename_origin\" to \"$local_lib_path/$linkedname\"";
+            symlink "$filename_origin" "$local_lib_path/$linkedname"
             if [ "$?" != 0 ];then return 1;fi;
         fi
     else #yes
@@ -128,7 +129,7 @@ find_and_symlink(){
     return 0;
 }
 check_ffmpeg_libs(){
-    mkdir -vp "$LOCAL_LIB_PATH";
+    mkdir -vp "$local_lib_path";
     putinfo "Detecting ffmpeg libs..";
     #ffmpeg it self
     if [ -z "$(which ffmpeg)" ];then
@@ -151,7 +152,7 @@ check_ffmpeg_libs(){
     find_and_symlink "$libDir_prefix/libswscale.so" "libswscale" "libswscale.so";
     if [ $? != 0 ];then puterror "Unable to create nessrary symlink!Please check your ffmpeg installation!" ;exit 1;fi;
 
-    export LD_LIBRARY_PATH="$LOCAL_LIB_PATH/";
+    export LD_LIBRARY_PATH="$local_lib_path/";
     putinfo "Set LD_LIBRARY_PATH to $LD_LIBRARY_PATH ";
 }
 
@@ -163,24 +164,29 @@ if [ ! -z "$APPIMAGE" ] && [ ! -z "$APPDIR" ]; then
 fi
 
 while [ $# -gt 0 ]; do
-    arg=$1
+    arg=`echo $1 | cut -d "=" -f1`
+    value=`echo $1 | cut -d "=" -f2 --only-delimited`
     case $arg in
-        --help)
+        --help | -h)
             usage;
             exit 0;
             ;;
-        --distro)
-            shift;
-            if [ -z "$1" ];then puterror "No distro name was given";exit 1;fi
-            DISTRO="$1";
-            shift;
-            ;;
-        --ld-debug-libs)
-            ld_debug=1;
+        --distro | -d)
+            if [ -z "$value" ];then puterror "No distro name was given";exit 1;fi
+            DISTRO="$value";
             shift;
             ;;
-        --no-launch)
+        --ld-debug | -l)
+            ld_debug="$value";
+            shift;
+            ;;
+        --no-launch | -n)
             no_launch=1;
+            shift;
+            ;;
+        --ld-library-path | -L)
+            if [ -z "$value" ];then puterror "LD_LIBRARY_PATH should not be null!";exit 1;fi
+            local_lib_path="$value";
             shift;
             ;;
         *)
@@ -192,7 +198,7 @@ while [ $# -gt 0 ]; do
 done
 
 presets;
-putinfo "Running as user `whoami`(`id -u`) on $DISTRO(`uname -a`), ARCH= $SYSARCH ,  PWD = $PWD , APPIMAGE = $APPIMAGE , APPDIR = $APPDIR ,library path prefix=$libDir_prefix"
+putinfo "Running as user `whoami`(`id -u`) on $distro(`uname -a`), ARCH= $SYSARCH ,  PWD = $PWD , APPIMAGE = $APPIMAGE , APPDIR = $APPDIR ,library path prefix=$libDir_prefix"
 check_ffmpeg_libs;
 putok "Ready to go!"
 
