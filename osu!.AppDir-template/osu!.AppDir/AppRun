@@ -177,6 +177,7 @@ while [ $# -gt 0 ]; do
             shift;
             ;;
         --ld-debug | -l)
+            if [ -z "$value" ];then puterror "LD_DEBUG should not be null!";exit 1;fi
             ld_debug="$value";
             shift;
             ;;
