@@ -23,7 +23,7 @@ Usage:
 
 Mandatory arguments to long options are mandatory for short options too.
     -h, --help      :   Shows what you are reading now :P
-    -n, --no-launch :   Don't launch osu!lazer
+    -N, --no-launch :   Don't launch osu!lazer
     -d, --distro=<name>  :   Override the value of \$distro
     -l, --ld-debug=<arg> :   Set LD_DEBUG value
     -L, --ld-library-path=<path> : Override the value of \$LD_LIBRARY_PATH , use absolute path
@@ -178,7 +178,7 @@ while [ $# -gt 0 ]; do
             ld_debug="$value";
             shift;
             ;;
-        --no-launch | -n)
+        --no-launch | -N)
             no_launch=1;
             shift;
             ;;
