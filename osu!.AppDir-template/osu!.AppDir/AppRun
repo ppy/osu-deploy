@@ -9,7 +9,8 @@ local_lib_path="$osu_path/libs"
 ld_debug="";no_launch=0;
 lazer_args=" "
 
-distro=`grep ID /etc/os-release | cut -d '=' -f2 | sed -n '1,1p'`
+distro=`grep -w ID /etc/os-release | cut -d '=' -f2 | sed -n '1,1p'`
+distro_tag=" "
 if [ -z "$distro" ];then distro="unknown";fi;
 
 #functions
@@ -17,6 +18,14 @@ init(){
     mkdir -vp "$local_lib_path" 1>/dev/null;
     lazer_arg_file=`mktemp $osu_path/lazer_args.XXXX`;
     echo "" > "$lazer_arg_file";
+    case $distro in
+        deepin)
+            distro_tag="debian_based";
+            ;;
+        ubuntu)
+            distro_tag="debian_based";
+            ;;
+    esac
 }
 usage(){
 cat <<EOF
@@ -96,7 +105,7 @@ find_and_symlink(){
         return 0;
     fi
 
-    if [ "$distro" = "ubuntu" ];then #Ubuntu may have i386 and amd64 libs at the same time
+    if [ "$distro_tag" = "debian_based" ];then #Debian-based distros may have i386 and amd64 libs at the same time
         filename_origin=`find /usr/lib* -name $search_name* | grep "$SYSARCH" | sed -n '1,1p'`;
     else
         filename_origin="`find /usr/lib* -name $search_name* | sed -n '1,1p'` "
