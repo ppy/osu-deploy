@@ -1,22 +1,22 @@
 #!/bin/sh
 #NOTE:Distribution-specific checks should be avoided as much as possible.
 #readonly variables , default values etc.
-readonly APPNAME=`basename "$0"`
-readonly SYSARCH=`uname -m`
+readonly APPNAME=$(basename "$0")
+readonly SYSARCH=$(uname -m)
 
 osu_path="$HOME/.local/share/osu"
 local_lib_path="$osu_path/libs"
 ld_debug="";no_launch=0;
 lazer_args=" "
 
-distro=`grep -w ID /etc/os-release | cut -d '=' -f2 | sed -n '1,1p'`
+distro=$(grep -w ID /etc/os-release | cut -d '=' -f2 | sed -n '1,1p')
 distro_tag=" "
 if [ -z "$distro" ];then distro="unknown";fi;
 
 #functions
 init(){
     mkdir -vp "$local_lib_path" 1>/dev/null;
-    lazer_arg_file=`mktemp $osu_path/lazer_args.XXXX`;
+    lazer_arg_file=$(mktemp "$osu_path"/lazer_args.XXXX);
     echo "" > "$lazer_arg_file";
     case $distro in
         deepin)
@@ -44,25 +44,25 @@ EOF
 }
 putinfo(){
     msg="$1";
-    printf "[$APPNAME][`date +%T`][INFO]\t$msg\33[0m\n"
+    printf "[%s][$(date +%T)][INFO]\t%s\33[0m\n"        "$APPNAME" "$msg";
 }
 puterror(){
     msg="$1";
-    printf "[$APPNAME][`date +%T`]\33[31m[ERRO]\t$msg\33[0m\n"
+    printf "[%s][$(date +%T)]\33[31m[ERRO]\t%s\33[0m\n" "$APPNAME" "$msg";
 }
 putwarn(){
     msg="$1";
-    printf "[$APPNAME][`date +%T`]\33[33m[WARN]\t$msg\33[0m\n"
+    printf "[%s][$(date +%T)]\33[33m[WARN]\t%s\33[0m\n" "$APPNAME" "$msg";
 }
 putok(){
     msg="$1";
-    printf "[$APPNAME][`date +%T`]\33[32m[OK]\t\t$msg\33[0m\n"
+    printf "[%s][$(date +%T)]\33[32m[OK]\t\t%s\33[0m\n" "$APPNAME" "$msg";
 }
 env_sets(){
-    lazer_args="`head -1 $lazer_arg_file`"
-    putinfo "Running osu! with arg(s):$lazer_args"
+    lazer_args=$(head -1 "$lazer_arg_file");
+    putinfo "Running osu! with arg(s):$lazer_args";
     if [ $no_launch -eq 1 ];then putinfo "Stopped because --no-launch was given";quit 0;fi;
-    if [ ! -z $ld_debug ];then putinfo "Set LD_DEBUG to $ld_debug";export LD_DEBUG="$ld_debug";fi;
+    if [ -n "$ld_debug" ];then putinfo "Set LD_DEBUG to $ld_debug";export LD_DEBUG="$ld_debug";fi;
 }
 symlink(){
     origin="$1";
@@ -76,7 +76,7 @@ symlink(){
         puterror "Origin or target filename not given!";
         return 1;
     else
-        ln $origin $target -s
+        ln "$origin" "$target" -s
         if [ ! -h "$target" ];then
             puterror "$origin -> $target failed!";
             return 1;
@@ -89,7 +89,7 @@ symlink(){
 find_and_symlink(){ 
     #Still needs a better way to detect libraries
     #Currently it will take A LONG TIME to detect a library
-    search_name="$1";
+    search_name="$1";   
     symlnkname="$2";
     if [ -z "$symlnkname" ];then
         putwarn "\"symlnkname\" not given,using \"search_name\"($search_name) instead";
@@ -100,15 +100,15 @@ find_and_symlink(){
         return 0;
     };fi;
 
-    if [ ! -z `find /usr/lib* -name $search_name | grep "$SYSARCH" | sed -n '1,1p'` ];then
-        putok "$search_name seems to be linked correctly! Skipping"
+    if [ -n "$(find /usr/lib* -name "$search_name" | grep "$SYSARCH" | sed -n '1,1p')" ];then
+        putok "$search_name seems to be linked correctly! Skipping";
         return 0;
     fi
 
     if [ "$distro_tag" = "debian_based" ];then #Debian-based distros may have i386 and amd64 libs at the same time
-        filename_origin=`find /usr/lib* -name $search_name* | grep "$SYSARCH" | sed -n '1,1p'`;
+        filename_origin=$(find /usr/lib* -name "$search_name*" | grep "$SYSARCH" | sed -n '1,1p');
     else
-        filename_origin="`find /usr/lib* -name $search_name* | sed -n '1,1p'` "
+        filename_origin="$(find /usr/lib* -name "$search_name*" | sed -n '1,1p')"
     fi
 
     if [ -z "$filename_origin" ];then {
@@ -117,64 +117,70 @@ find_and_symlink(){
     else
     {
             putinfo "Trying to create a symlink from \"$filename_origin\" to \"$local_lib_path/$symlnkname\"";
-            symlink "$filename_origin" "$local_lib_path/$symlnkname"
-            if [ "$?" != 0 ];then return 1;fi;
+            if ! symlink "$filename_origin" "$local_lib_path/$symlnkname";then
+                return 1;fi;
     };fi;
 }
 check_ffmpeg_libs(){
     putinfo "Detecting ffmpeg libs..";
     #ffmpeg it self
-    if [ -z "$(which ffmpeg 2>/dev/null)" ];then
+    if [ -z "$(command -v ffmpeg 2>/dev/null)" ];then
         putwarn "FFmpeg not found! This may cause video playback issues!";
     fi
 
     #libavformat
-    find_and_symlink "libavformat.so" "libavformat.so";
-    if [ $? != 0 ];then putwarn "Unable to create nessrary symlink!Please check your ffmpeg installation!";fi;
+    if ! find_and_symlink "libavformat.so" "libavformat.so";then 
+        putwarn "Unable to create nessrary symlink!Please check your ffmpeg installation!";
+    fi;
     #libavcodec
-    find_and_symlink "libavcodec.so" "libavcodec.so";
-    if [ $? != 0 ];then putwarn "Unable to create nessrary symlink!Please check your ffmpeg installation!";fi;
+    if ! find_and_symlink "libavcodec.so" "libavcodec.so";then
+        putwarn "Unable to create nessrary symlink!Please check your ffmpeg installation!";
+    fi;
     #libavutil
-    find_and_symlink "libavutil.so" "libavutil.so";
-    if [ $? != 0 ];then putwarn "Unable to create nessrary symlink!Please check your ffmpeg installation!";fi;
+    if ! find_and_symlink "libavutil.so" "libavutil.so";then
+        putwarn "Unable to create nessrary symlink!Please check your ffmpeg installation!";
+    fi;
     #libswscale
-    find_and_symlink "libswscale.so" "libswscale.so";
-    if [ $? != 0 ];then putwarn "Unable to create nessrary symlink!Please check your ffmpeg installation!";fi;
+    if ! find_and_symlink "libswscale.so" "libswscale.so";then
+        putwarn "Unable to create nessrary symlink!Please check your ffmpeg installation!";
+    fi;
 
     export LD_LIBRARY_PATH="$local_lib_path/";
     putinfo "Set LD_LIBRARY_PATH to $LD_LIBRARY_PATH ";
 }
 cleanup(){
-    rm "$lazer_arg_file"
+    LD_DEBUG="";
+    rm "$lazer_arg_file";
+    LD_DEBUG="$ld_debug";
 }
 quit(){
     cleanup;
-    exit $1;
+    exit "$1";
 }
 
 init;
-if [ ! -z "$APPIMAGE" ] && [ ! -z "$APPDIR" ]; then
-    MD5=$(echo -n "file://$APPIMAGE" | md5sum | cut -d' ' -f1)
-    cp "$APPDIR/osu!.png" "$HOME/.cache/thumbnails/normal/$MD5.png"
-    cp "$APPDIR/osu!.png" "$HOME/.cache/thumbnails/large/$MD5.png"
-    xdg-icon-resource forceupdate
+if [ -n "$APPIMAGE" ] && [ -n "$APPDIR" ]; then
+    MD5=$(echo -n "file://$APPIMAGE" | md5sum | cut -d' ' -f1);
+    cp "$APPDIR/osu!.png" "$HOME/.cache/thumbnails/normal/$MD5.png";
+    cp "$APPDIR/osu!.png" "$HOME/.cache/thumbnails/large/$MD5.png";
+    xdg-icon-resource forceupdate;
 fi
 
 while [ $# -gt 0 ]; do
-    arg=`echo -n "$1" | cut -d "=" -f1`
-    value=`echo $1 | cut -d "=" -f2 --only-delimited`
+    arg=$(printf "%s" "$1" | cut -d "=" -f1)
+    value=$(echo "$1" | cut -d "=" -f2 --only-delimited)
     case $arg in
         --help | -h)
             usage;
             quit 0;
             ;;
         --distro | -d)
-            if [ -z "$value" ];then puterror "No distro name was given";quit 1;fi
+            if [ -z "$value" ];then puterror "No distro name was given";quit 1;fi;
             distro="$value";
             shift;
             ;;
         --ld-debug | -l)
-            if [ -z "$value" ];then puterror "LD_DEBUG should not be null!";quit 1;fi
+            if [ -z "$value" ];then puterror "LD_DEBUG should not be null!";quit 1;fi;
             ld_debug="$value";
             shift;
             ;;
@@ -183,7 +189,7 @@ while [ $# -gt 0 ]; do
             shift;
             ;;
         --ld-library-path | -L)
-            if [ -z "$value" ];then puterror "LD_LIBRARY_PATH should not be null!";quit 1;fi
+            if [ -z "$value" ];then puterror "LD_LIBRARY_PATH should not be null!";quit 1;fi;
             local_lib_path="$value";
             shift;
             ;;
@@ -195,13 +201,13 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-putinfo "Running as user `whoami`(`id -u`) on $distro(`uname -a`), ARCH= $SYSARCH ,  PWD = $PWD , APPIMAGE = $APPIMAGE , APPDIR = $APPDIR"
+putinfo "Running as user $(whoami)($(id -u)) on $distro($(uname -a)), ARCH= $SYSARCH ,  PWD = $PWD , APPIMAGE = $APPIMAGE , APPDIR = $APPDIR";
 check_ffmpeg_libs;
-putok "Ready to go!"
+putok "Ready to go!";
 
-HERE="$(dirname "$(readlink -f "${0}")")"
-export PATH="${HERE}"/usr/bin/:"${PATH}"
-EXEC=$(grep -e '^Exec=.*' "${HERE}"/*.desktop | head -n 1 | cut -d "=" -f 2 | cut -d " " -f 1)
+HERE="$(dirname "$(readlink -f "${0}")")";
+export PATH="${HERE}"/usr/bin/:"${PATH}";
+EXEC=$(grep -e '^Exec=.*' "${HERE}"/*.desktop | head -n 1 | cut -d "=" -f 2 | cut -d " " -f 1);
 env_sets;
-LD_DEBUG="" cleanup;
-exec "${EXEC}" $lazer_args
+cleanup;
+exec "${EXEC}" "$lazer_args";
