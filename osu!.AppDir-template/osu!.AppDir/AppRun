@@ -6,7 +6,7 @@ readonly SYSARCH=$(uname -m)
 
 osu_path="$HOME/.local/share/osu"
 local_lib_path="$osu_path/libs"
-ld_debug="";no_launch=0;
+ld_debug="";no_launch=0;ld_or_find=0;
 lazer_args=" "
 
 distro=$(grep -w ID /etc/os-release | cut -d '=' -f2 | sed -n '1,1p')
@@ -26,6 +26,12 @@ init(){
             distro_tag="debian_based";
             ;;
     esac
+
+    if ! ldconfig --help 1>/dev/null 2>/dev/null 3>/dev/null;then {
+        putwarn "We have problems on using ldconfig!";
+        putwarn "Using \"find\" to find libraries instead.";
+        ld_or_find=1;
+    };fi;
 }
 usage(){
 cat <<EOF
@@ -87,8 +93,6 @@ symlink(){
     fi
 }
 find_and_symlink(){ 
-    #Still needs a better way to detect libraries
-    #Currently it will take A LONG TIME to detect a library
     search_name="$1";   
     symlnkname="$2";
     if [ -z "$symlnkname" ];then
@@ -100,16 +104,24 @@ find_and_symlink(){
         return 0;
     };fi;
 
-    if [ -n "$(find /usr/lib* -name "$search_name" | grep "$SYSARCH" | sed -n '1,1p')" ];then
-        putok "$search_name seems to be linked correctly! Skipping";
-        return 0;
-    fi
-
-    if [ "$distro_tag" = "debian_based" ];then #Debian-based distros may have i386 and amd64 libs at the same time
-        filename_origin=$(find /usr/lib* -name "$search_name*" | grep "$SYSARCH" | sed -n '1,1p');
-    else
-        filename_origin="$(find /usr/lib* -name "$search_name*" | sed -n '1,1p')"
-    fi
+    if [ $ld_or_find -eq 0 ];then {
+        if [ -n "$(ldconfig -p | grep -w "/$search_name" | cut -d '>' -f2)" ];then
+            putok "$search_name seems to be linked correctly! Skipping";
+            return 0;
+        else
+            filename_origin=$(ldconfig -p | grep "$search_name" | cut -d '>' -f2 | sed 's/ //g' | sed -n '1,1p');
+        fi
+    };else {
+        if [ -n "$(find /usr/lib* -name "$search_name" | grep "$SYSARCH" | sed -n '1,1p')" ];then
+            putok "$search_name seems to be linked correctly! Skipping";
+            return 0;
+        fi
+        if [ "$distro_tag" = "debian_based" ];then #Debian-based distros may have i386 and amd64 libs at the same time
+            filename_origin=$(find /usr/lib* -name "$search_name*" | grep "$SYSARCH" | sed -n '1,1p');
+        else
+            filename_origin="$(find /usr/lib* -name "$search_name*" | sed -n '1,1p')"
+        fi
+    };fi;
 
     if [ -z "$filename_origin" ];then {
         return 1;
