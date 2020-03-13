@@ -194,7 +194,7 @@ namespace osu.Desktop.Deploy
 
                     // TODO: make this actually wait properly
                     write("Waiting for notarisation to complete..");
-                    Thread.Sleep(60000 * 10);
+                    Thread.Sleep(60000 * 5);
 
                     // staple notarisation result
                     runCommand("xcrun", $"stapler staple {stagingApp}");
