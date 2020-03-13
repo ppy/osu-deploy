@@ -425,7 +425,7 @@ namespace osu.Desktop.Deploy
 
             foreach (var a in assets)
             {
-                if (a.Name.EndsWith(".exe") || a.Name.EndsWith(".app.zip")) continue;
+                if (a.Name != "RELEASES" && !a.Name.EndsWith(".nupkg")) continue;
 
                 write($"- Downloading {a.Name}...", ConsoleColor.Yellow);
                 new FileWebRequest(Path.Combine(releases_folder, a.Name), $"{GitHubApiEndpoint}/assets/{a.Id}").AuthenticatedBlockingPerform();
