@@ -83,8 +83,6 @@ namespace osu.Desktop.Deploy
                 else
                 {
                     write($"Last GitHub release was {lastRelease.Name}.");
-                    if (lastRelease.Draft)
-                        write("WARNING: This is a pending draft release! You might not want to push a build with this present.", ConsoleColor.Red);
                 }
             }
 
@@ -378,7 +376,7 @@ namespace osu.Desktop.Deploy
         {
             var req = new JsonWebRequest<List<GitHubRelease>>($"{GitHubApiEndpoint}");
             req.AuthenticatedBlockingPerform();
-            return req.ResponseObject.FirstOrDefault();
+            return req.ResponseObject.FirstOrDefault(r => !r.Draft);
         }
 
         /// <summary>
