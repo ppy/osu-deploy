@@ -324,7 +324,7 @@ namespace osu.Desktop.Deploy
                 Method = HttpMethod.Post,
             };
 
-            GitHubRelease targetRelease = getLastGithubRelease();
+            GitHubRelease targetRelease = getLastGithubRelease(true);
 
             if (targetRelease == null || targetRelease.TagName != version)
             {
@@ -372,11 +372,11 @@ namespace osu.Desktop.Deploy
 
         private static bool canGitHub => !string.IsNullOrEmpty(GitHubAccessToken);
 
-        private static GitHubRelease getLastGithubRelease()
+        private static GitHubRelease getLastGithubRelease(bool includeDrafts = false)
         {
             var req = new JsonWebRequest<List<GitHubRelease>>($"{GitHubApiEndpoint}");
             req.AuthenticatedBlockingPerform();
-            return req.ResponseObject.FirstOrDefault(r => !r.Draft);
+            return req.ResponseObject.FirstOrDefault(r => includeDrafts || !r.Draft);
         }
 
         /// <summary>
