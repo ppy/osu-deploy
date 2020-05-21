@@ -8,6 +8,8 @@ HERE="$(dirname "$(readlink -f "${0}")")";
 export PATH="${HERE}"/usr/bin/:"${PATH}";
 
 osu_path=$(grep -n "FullPath" "$HOME/.local/share/osu/storage.ini" | head -n 1 | cut -d "=" -f 2 | sed "s/ //g")
+if [ -z "$osu_path" ]; then osu_path="$HOME/.local/share/osu";fi
+
 local_lib_path="$osu_path/lib"
 tmp_path="$osu_path/tmp"
 ld_debug="";
