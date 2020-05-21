@@ -1,37 +1,29 @@
 #!/bin/sh
 #NOTE:Distribution-specific checks should be avoided as much as possible.
-#readonly variables , default values etc.
+
 readonly APPNAME=$(basename "$0")
 readonly SYSARCH=$(uname -m)
 
-osu_path="$HOME/.local/share/osu"
-local_lib_path="$osu_path/libs"
-ld_debug="";no_launch=0;ld_or_find=0;
-lazer_args=" "
+HERE="$(dirname "$(readlink -f "${0}")")";
+export PATH="${HERE}"/usr/bin/:"${PATH}";
+
+osu_path=$(grep -n "FullPath" "$HOME/.local/share/osu/storage.ini" | head -n 1 | cut -d "=" -f 2 | sed "s/ //g")
+local_lib_path="$osu_path/lib"
+tmp_path="$osu_path/tmp"
+ld_debug="";
+no_launch=0;
+lazer_args="";
 
 distro=$(grep -w ID /etc/os-release | cut -d '=' -f2 | sed -n '1,1p')
-distro_tag=" "
 if [ -z "$distro" ];then distro="unknown";fi;
 
 #functions
 init(){
+    rm -R "$tmp_path" 2>/dev/null;
     mkdir -vp "$local_lib_path" 1>/dev/null;
-    lazer_arg_file=$(mktemp "$osu_path"/lazer_args.XXXX);
+    mkdir -vp "$tmp_path" 1>/dev/null;
+    lazer_arg_file=$(mktemp "$tmp_path"/lazer_args.XXXX);
     echo "" > "$lazer_arg_file";
-    case $distro in
-        deepin)
-            distro_tag="debian_based";
-            ;;
-        ubuntu)
-            distro_tag="debian_based";
-            ;;
-    esac
-
-    if ! ldconfig --help 1>/dev/null 2>/dev/null 3>/dev/null;then {
-        putwarn "We have problems on using ldconfig!";
-        putwarn "Using \"find\" to find libraries instead.";
-        ld_or_find=1;
-    };fi;
 }
 usage(){
 cat <<EOF
@@ -40,9 +32,9 @@ Usage:
 
 Mandatory arguments to long options are mandatory for short options too.
     -h, --help      :   Shows what you are reading now :P
-    -N, --no-launch :   Don't launch osu!lazer
-    -d, --distro=<name>  :   Override the value of \$distro
-    -l, --ld-debug=<arg> :   Set LD_DEBUG value
+    -f, --ffmpeg    :   Check if ffmpeg is not working
+    -n, --no-launch :   Don't launch osu!lazer
+    -l, --ld-debug=<arg> :  Set LD_DEBUG value
     -L, --ld-library-path=<path> : Override the value of \$LD_LIBRARY_PATH , use absolute path
 
 Once all the script parameters are processed , the script will send the rest parameters to osu!lazer.
@@ -68,101 +60,13 @@ env_sets(){
     lazer_args=$(head -1 "$lazer_arg_file");
     putinfo "Running osu! with arg(s):$lazer_args";
     if [ $no_launch -eq 1 ];then putinfo "Stopped because --no-launch was given";quit 0;fi;
-    if [ -n "$ld_debug" ];then putinfo "Set LD_DEBUG to $ld_debug";export LD_DEBUG="$ld_debug";fi;
-}
-symlink(){
-    origin="$1";
-    target="$2";
-    if [ -f "$target" ];then
-        putwarn "Target file \"$target\" already exists! Skipping...";
-        return 0;
-    fi
-
-    if [ -z "$origin" ] || [ -z "$target" ];then
-        puterror "Origin or target filename not given!";
-        return 1;
-    else
-        ln "$origin" "$target" -s
-        if [ ! -h "$target" ];then
-            puterror "$origin -> $target failed!";
-            return 1;
-        else
-            putok "$origin -> $target success!";
-            return 0;
-        fi
-    fi
-}
-find_and_symlink(){ 
-    search_name="$1";   
-    symlnkname="$2";
-    if [ -z "$symlnkname" ];then
-        putwarn "\"symlnkname\" not given,using \"search_name\"($search_name) instead";
-        symlnkname="$search_name";
-    fi
-    if [ -h "$local_lib_path/$symlnkname" ] || [ -f "$local_lib_path/$symlnkname" ];then {
-        putok "$local_lib_path/$symlnkname already exists! Skipping...";
-        return 0;
-    };fi;
-
-    if [ $ld_or_find -eq 0 ];then {
-        if [ -n "$(ldconfig -p | grep -w "/$search_name" | cut -d '>' -f2)" ];then
-            putok "$search_name seems to be linked correctly! Skipping";
-            return 0;
-        else
-            filename_origin=$(ldconfig -p | grep "$search_name" | cut -d '>' -f2 | sed 's/ //g' | sed -n '1,1p');
-        fi
-    };else {
-        if [ -n "$(find /usr/lib* -name "$search_name" | grep "$SYSARCH" | sed -n '1,1p')" ];then
-            putok "$search_name seems to be linked correctly! Skipping";
-            return 0;
-        fi
-        if [ "$distro_tag" = "debian_based" ];then #Debian-based distros may have i386 and amd64 libs at the same time
-            filename_origin=$(find /usr/lib* -name "$search_name*" | grep "$SYSARCH" | sed -n '1,1p');
-        else
-            filename_origin="$(find /usr/lib* -name "$search_name*" | sed -n '1,1p')"
-        fi
-    };fi;
-
-    if [ -z "$filename_origin" ];then {
-        return 1;
-    }
-    else
-    {
-            putinfo "Trying to create a symlink from \"$filename_origin\" to \"$local_lib_path/$symlnkname\"";
-            if ! symlink "$filename_origin" "$local_lib_path/$symlnkname";then
-                return 1;fi;
-    };fi;
-}
-check_ffmpeg_libs(){
-    putinfo "Detecting ffmpeg libs..";
-    #ffmpeg it self
-    if [ -z "$(command -v ffmpeg 2>/dev/null)" ];then
-        putwarn "FFmpeg not found! This may cause video playback issues!";
-    fi
-
-    #libavformat
-    if ! find_and_symlink "libavformat.so" "libavformat.so";then 
-        putwarn "Unable to create nessrary symlink!Please check your ffmpeg installation!";
-    fi;
-    #libavcodec
-    if ! find_and_symlink "libavcodec.so" "libavcodec.so";then
-        putwarn "Unable to create nessrary symlink!Please check your ffmpeg installation!";
-    fi;
-    #libavutil
-    if ! find_and_symlink "libavutil.so" "libavutil.so";then
-        putwarn "Unable to create nessrary symlink!Please check your ffmpeg installation!";
-    fi;
-    #libswscale
-    if ! find_and_symlink "libswscale.so" "libswscale.so";then
-        putwarn "Unable to create nessrary symlink!Please check your ffmpeg installation!";
-    fi;
-
-    export LD_LIBRARY_PATH="$local_lib_path/";
+    export LD_LIBRARY_PATH="${HERE}/usr/lib:$local_lib_path:$APPDIR/usr/lib:$LD_LIBRARY_PATH";
     putinfo "Set LD_LIBRARY_PATH to $LD_LIBRARY_PATH ";
+    if [ -n "$ld_debug" ];then putinfo "Set LD_DEBUG to $ld_debug";export LD_DEBUG="$ld_debug";fi;
 }
 cleanup(){
     LD_DEBUG="";
-    rm "$lazer_arg_file";
+    rm -R "$tmp_path"
     LD_DEBUG="$ld_debug";
 }
 quit(){
@@ -186,9 +90,14 @@ while [ $# -gt 0 ]; do
             usage;
             quit 0;
             ;;
-        --distro | -d)
-            if [ -z "$value" ];then puterror "No distro name was given";quit 1;fi;
-            distro="$value";
+        -ffmpeg | -f)
+            env_sets;
+            cleanup;
+            exec "${HERE}/usr/bin/ffmpeg";
+            quit 0;
+            ;;
+        --no-launch | -N)
+            no_launch=1;
             shift;
             ;;
         --ld-debug | -l)
@@ -196,12 +105,8 @@ while [ $# -gt 0 ]; do
             ld_debug="$value";
             shift;
             ;;
-        --no-launch | -N)
-            no_launch=1;
-            shift;
-            ;;
         --ld-library-path | -L)
-            if [ -z "$value" ];then puterror "LD_LIBRARY_PATH should not be null!";quit 1;fi;
+            if [ -z "$value" ];then putwarn "You are giving an empty argument for LD_LIBRARY_PATH.";fi;
             local_lib_path="$value";
             shift;
             ;;
@@ -213,13 +118,10 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-putinfo "Running as user $(whoami)($(id -u)) on $distro($(uname -a)), ARCH= $SYSARCH ,  PWD = $PWD , APPIMAGE = $APPIMAGE , APPDIR = $APPDIR";
-check_ffmpeg_libs;
+putinfo "Running as user $(whoami)($(id -u)) on $distro($(uname -a)), ARCH=$SYSARCH , PWD=$PWD , APPIMAGE =$APPIMAGE , APPDIR=$APPDIR";
 putok "Ready to go!";
 
-HERE="$(dirname "$(readlink -f "${0}")")";
-export PATH="${HERE}"/usr/bin/:"${PATH}";
 EXEC=$(grep -e '^Exec=.*' "${HERE}"/*.desktop | head -n 1 | cut -d "=" -f 2 | cut -d " " -f 1);
 env_sets;
 cleanup;
-exec "${EXEC}" "$lazer_args";
+exec "${EXEC}" $lazer_args
