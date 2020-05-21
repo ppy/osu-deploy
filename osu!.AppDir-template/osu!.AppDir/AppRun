@@ -32,7 +32,6 @@ Usage:
 
 Mandatory arguments to long options are mandatory for short options too.
     -h, --help      :   Shows what you are reading now :P
-    -f, --ffmpeg    :   Check if ffmpeg is not working
     -n, --no-launch :   Don't launch osu!lazer
     -l, --ld-debug=<arg> :  Set LD_DEBUG value
     -L, --ld-library-path=<path> : Override the value of \$LD_LIBRARY_PATH , use absolute path
@@ -90,13 +89,7 @@ while [ $# -gt 0 ]; do
             usage;
             quit 0;
             ;;
-        -ffmpeg | -f)
-            env_sets;
-            cleanup;
-            exec "${HERE}/usr/bin/ffmpeg";
-            quit 0;
-            ;;
-        --no-launch | -N)
+        --no-launch | -n)
             no_launch=1;
             shift;
             ;;
