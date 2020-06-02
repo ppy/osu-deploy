@@ -152,7 +152,7 @@ namespace osu.Desktop.Deploy
                     string codeSigningCertPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), CodeSigningCertificate);
                     string codeSigningCmd = string.IsNullOrEmpty(codeSigningPassword)
                         ? ""
-                        : $"-n \"/a /f {codeSigningCertPath} /p {codeSigningPassword} /t http://timestamp.comodoca.com/authenticode\"";
+                        : $"-n \"/td sha256 /fd sha256 /f {codeSigningCertPath} /p {codeSigningPassword} /t http://timestamp.comodoca.com\"";
 
                     string nupkgFilename = $"{PackageName}.{version}.nupkg";
 
