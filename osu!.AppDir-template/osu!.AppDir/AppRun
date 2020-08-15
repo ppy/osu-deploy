@@ -1,0 +1,122 @@
+#!/bin/sh
+#NOTE:Distribution-specific checks should be avoided as much as possible.
+
+readonly APPNAME=$(basename "$0")
+readonly SYSARCH=$(uname -m)
+
+HERE="$(dirname "$(readlink -f "${0}")")";
+export PATH="${HERE}"/usr/bin/:"${PATH}";
+
+osu_path=$(grep -n "FullPath" "$HOME/.local/share/osu/storage.ini" | head -n 1 | cut -d "=" -f 2 | sed "s/ //g")
+if [ -z "$osu_path" ]; then osu_path="$HOME/.local/share/osu";fi
+
+local_lib_path="$osu_path/lib"
+tmp_path="$osu_path/tmp"
+ld_debug="";
+no_launch=0;
+lazer_args="";
+
+distro=$(grep -w ID /etc/os-release | cut -d '=' -f2 | sed -n '1,1p')
+if [ -z "$distro" ];then distro="unknown";fi;
+
+#functions
+init(){
+    rm -R "$tmp_path" 2>/dev/null;
+    mkdir -vp "$local_lib_path" 1>/dev/null;
+    mkdir -vp "$tmp_path" 1>/dev/null;
+    lazer_arg_file=$(mktemp "$tmp_path"/lazer_args.XXXX);
+    echo "" > "$lazer_arg_file";
+}
+usage(){
+cat <<EOF
+Usage:
+    $APPNAME [OPTION]... [...]
+
+Mandatory arguments to long options are mandatory for short options too.
+    -h, --help      :   Shows what you are reading now :P
+    -n, --no-launch :   Don't launch osu!lazer
+    -l, --ld-debug=<arg> :  Set LD_DEBUG value
+    -L, --ld-library-path=<path> : Override the value of \$LD_LIBRARY_PATH , use absolute path
+
+Once all the script parameters are processed , the script will send the rest parameters to osu!lazer.
+EOF
+}
+putinfo(){
+    msg="$1";
+    printf "[%s][$(date +%T)][INFO]\t%s\33[0m\n"        "$APPNAME" "$msg";
+}
+puterror(){
+    msg="$1";
+    printf "[%s][$(date +%T)]\33[31m[ERRO]\t%s\33[0m\n" "$APPNAME" "$msg";
+}
+putwarn(){
+    msg="$1";
+    printf "[%s][$(date +%T)]\33[33m[WARN]\t%s\33[0m\n" "$APPNAME" "$msg";
+}
+putok(){
+    msg="$1";
+    printf "[%s][$(date +%T)]\33[32m[OK]\t\t%s\33[0m\n" "$APPNAME" "$msg";
+}
+env_sets(){
+    lazer_args=$(head -1 "$lazer_arg_file");
+    putinfo "Running osu! with arg(s):$lazer_args";
+    if [ $no_launch -eq 1 ];then putinfo "Stopped because --no-launch was given";quit 0;fi;
+    export LD_LIBRARY_PATH="${HERE}/usr/lib:$local_lib_path:$APPDIR/usr/lib:$LD_LIBRARY_PATH";
+    putinfo "Set LD_LIBRARY_PATH to $LD_LIBRARY_PATH ";
+    if [ -n "$ld_debug" ];then putinfo "Set LD_DEBUG to $ld_debug";export LD_DEBUG="$ld_debug";fi;
+}
+cleanup(){
+    LD_DEBUG="";
+    rm -R "$tmp_path"
+    LD_DEBUG="$ld_debug";
+}
+quit(){
+    cleanup;
+    exit "$1";
+}
+
+init;
+if [ -n "$APPIMAGE" ] && [ -n "$APPDIR" ]; then
+    MD5=$(echo -n "file://$APPIMAGE" | md5sum | cut -d' ' -f1);
+    cp "$APPDIR/osu!.png" "$HOME/.cache/thumbnails/normal/$MD5.png";
+    cp "$APPDIR/osu!.png" "$HOME/.cache/thumbnails/large/$MD5.png";
+    xdg-icon-resource forceupdate;
+fi
+
+while [ $# -gt 0 ]; do
+    arg=$(printf "%s" "$1" | cut -d "=" -f1)
+    value=$(echo "$1" | cut -d "=" -f2 --only-delimited)
+    case $arg in
+        --help | -h)
+            usage;
+            quit 0;
+            ;;
+        --no-launch | -n)
+            no_launch=1;
+            shift;
+            ;;
+        --ld-debug | -l)
+            if [ -z "$value" ];then puterror "LD_DEBUG should not be null!";quit 1;fi;
+            ld_debug="$value";
+            shift;
+            ;;
+        --ld-library-path | -L)
+            if [ -z "$value" ];then putwarn "You are giving an empty argument for LD_LIBRARY_PATH.";fi;
+            local_lib_path="$value";
+            shift;
+            ;;
+        *)
+            putwarn "Unrecognized option $arg , adding to lazer args...";
+            sed -i "s/\$/ $arg/" "$lazer_arg_file";
+            shift;
+            ;;
+    esac
+done
+
+putinfo "Running as user $(whoami)($(id -u)) on $distro($(uname -a)), ARCH=$SYSARCH , PWD=$PWD , APPIMAGE =$APPIMAGE , APPDIR=$APPDIR";
+putok "Ready to go!";
+
+EXEC=$(grep -e '^Exec=.*' "${HERE}"/*.desktop | head -n 1 | cut -d "=" -f 2 | cut -d " " -f 1);
+env_sets;
+cleanup;
+exec "${EXEC}" $lazer_args
