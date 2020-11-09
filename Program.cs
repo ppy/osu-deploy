@@ -78,19 +78,16 @@ namespace osu.Desktop.Deploy
                 write("Checking GitHub releases...");
                 lastRelease = getLastGithubRelease();
 
-                if (lastRelease == null)
-                    write("This is the first GitHub release");
-                else
-                {
-                    write($"Last GitHub release was {lastRelease.Name}.");
-                }
+                write(lastRelease == null
+                    ? "This is the first GitHub release"
+                    : $"Last GitHub release was {lastRelease.Name}.");
             }
 
             //increment build number until we have a unique one.
             string verBase = DateTime.Now.ToString("yyyy.Mdd.");
             int increment = 0;
 
-            if (lastRelease?.TagName.StartsWith(verBase) ?? false)
+            if (lastRelease?.TagName.StartsWith(verBase, StringComparison.InvariantCulture) ?? false)
                 increment = int.Parse(lastRelease.TagName.Split('.')[2]) + (IncrementVersion ? 1 : 0);
 
             string version = $"{verBase}{increment}";
@@ -423,7 +420,7 @@ namespace osu.Desktop.Deploy
 
             foreach (var a in assets)
             {
-                if (a.Name != "RELEASES" && !a.Name.EndsWith(".nupkg")) continue;
+                if (a.Name != "RELEASES" && !a.Name.EndsWith(".nupkg", StringComparison.InvariantCulture)) continue;
 
                 write($"- Downloading {a.Name}...", ConsoleColor.Yellow);
                 new FileWebRequest(Path.Combine(releases_folder, a.Name), $"{GitHubApiEndpoint}/assets/{a.Id}").AuthenticatedBlockingPerform();
