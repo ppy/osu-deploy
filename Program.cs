@@ -106,6 +106,8 @@ namespace osu.Desktop.Deploy
 
             stopwatch.Start();
 
+            // test
+
             refreshDirectory(staging_folder);
             updateAppveyorVersion(version);
 
