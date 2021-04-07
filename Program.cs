@@ -162,7 +162,7 @@ namespace osu.Desktop.Deploy
                     File.Copy(Path.Combine(releases_folder, "Setup.exe"), Path.Combine(releases_folder, "install.exe"), true);
                     File.Delete(Path.Combine(releases_folder, "Setup.exe"));
                     break;
-                case RuntimeInfo.Platform.MacOsx:
+                case RuntimeInfo.Platform.macOS:
 
                     // unzip the template app, with all structure existing except for dotnet published content.
                     runCommand("unzip", $"\"osu!.app-template.zip\" -d {stagingPath}", false);
