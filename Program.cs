@@ -175,30 +175,38 @@ namespace osu.Desktop.Deploy
                     // correct permissions post-build. dotnet outputs 644 by default; we want 755.
                     runCommand("chmod", $"-R 755 {stagingApp}");
 
-                    // sign using apple codesign
-                    runCommand("codesign", $"--deep --force --verify --entitlements {Path.Combine(Environment.CurrentDirectory, "osu.entitlements")} -o runtime --verbose --sign \"{CodeSigningCertificate}\" {stagingApp}");
 
-                    // check codesign was successful
-                    runCommand("spctl", $"--assess -vvvv {stagingApp}");
+                    if (!string.IsNullOrEmpty(CodeSigningCertificate))
+                    {
+                        // sign using apple codesign
+                        runCommand("codesign", $"--deep --force --verify --entitlements {Path.Combine(Environment.CurrentDirectory, "osu.entitlements")} -o runtime --verbose --sign \"{CodeSigningCertificate}\" {stagingApp}");
+
+                        // check codesign was successful
+                        runCommand("spctl", $"--assess -vvvv {stagingApp}");
+                    }
 
                     // package for distribution
                     runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingApp} {zippedApp}");
 
-                    // upload for notarisation
-                    runCommand("xcrun", $"altool --notarize-app --primary-bundle-id \"sh.ppy.osu.lazer\" --username \"{ConfigurationManager.AppSettings["AppleUsername"]}\" --password \"{ConfigurationManager.AppSettings["ApplePassword"]}\" --file {zippedApp}");
+                    string notarisationUsername = ConfigurationManager.AppSettings["AppleUsername"];
 
-                    // TODO: make this actually wait properly
-                    write("Waiting for notarisation to complete..");
-                    Thread.Sleep(60000 * 5);
+                    if (!string.IsNullOrEmpty(notarisationUsername))
+                    {
+                        // upload for notarisation
+                        runCommand("xcrun", $"altool --notarize-app --primary-bundle-id \"sh.ppy.osu.lazer\" --username \"{notarisationUsername}\" --password \"{ConfigurationManager.AppSettings["ApplePassword"]}\" --file {zippedApp}");
+                        // TODO: make this actually wait properly
+                        write("Waiting for notarisation to complete..");
+                        Thread.Sleep(60000 * 5);
 
-                    // staple notarisation result
-                    runCommand("xcrun", $"stapler staple {stagingApp}");
+                        // staple notarisation result
+                        runCommand("xcrun", $"stapler staple {stagingApp}");
+                    }
+
 
                     File.Delete(zippedApp);
 
                     // repackage for distribution
                     runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingApp} {zippedApp}");
-
                     break;
 
                 case RuntimeInfo.Platform.Linux:
@@ -263,7 +271,6 @@ namespace osu.Desktop.Deploy
         private static void checkReleaseFiles()
         {
             if (!canGitHub) return;
-
             var releaseLines = getReleaseLines();
 
             //ensure we have all files necessary
