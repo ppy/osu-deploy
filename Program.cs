@@ -167,6 +167,9 @@ namespace osu.Desktop.Deploy
                     // unzip the template app, with all structure existing except for dotnet published content.
                     runCommand("unzip", $"\"osu!.app-template.zip\" -d {stagingPath}", false);
 
+                    // without touching the app bundle itself, changes to file associations / icons / etc. will be cached at a macOS level and not updated.
+                    runCommand("touch" ,$"\"{Path.Combine(stagingPath, "osu!.app")}\" -d {stagingPath}", false);
+
                     runCommand("dotnet", $"publish -r osx-x64 {ProjectName} --configuration Release -o {stagingPath}/osu!.app/Contents/MacOS /p:Version={version}");
 
                     string stagingApp = $"{stagingPath}/osu!.app";
@@ -174,7 +177,6 @@ namespace osu.Desktop.Deploy
 
                     // correct permissions post-build. dotnet outputs 644 by default; we want 755.
                     runCommand("chmod", $"-R 755 {stagingApp}");
-
 
                     if (!string.IsNullOrEmpty(CodeSigningCertificate))
                     {
