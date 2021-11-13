@@ -93,15 +93,19 @@ namespace osu.Desktop.Deploy
 
             string version = $"{verBase}{increment}";
 
+            var targetPlatform = RuntimeInfo.OS;
+
             if (args.Length > 1 && !string.IsNullOrEmpty(args[1]))
                 version = args[1];
+            if (args.Length > 2 && !string.IsNullOrEmpty(args[2]))
+                Enum.TryParse(args[2], true, out targetPlatform);
 
             Console.ResetColor();
             Console.WriteLine($"Increment Version:     {IncrementVersion}");
             Console.WriteLine($"Signing Certificate:   {CodeSigningCertificate}");
             Console.WriteLine($"Upload to GitHub:      {GitHubUpload}");
             Console.WriteLine();
-            Console.Write($"Ready to deploy {version}!");
+            Console.Write($"Ready to deploy version {version} on platform {targetPlatform}!");
 
             pauseIfInteractive();
 
@@ -112,7 +116,7 @@ namespace osu.Desktop.Deploy
 
             write("Running build process...");
 
-            switch (RuntimeInfo.OS)
+            switch (targetPlatform)
             {
                 case RuntimeInfo.Platform.Windows:
                     getAssetsFromRelease(lastRelease);
