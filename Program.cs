@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Management.Automation;
 using System.Net;
@@ -27,6 +26,7 @@ namespace osu.Desktop.Deploy
         private static string squirrelPath => Path.Combine(packages, @"ppy.squirrel.windows\1.9.0.5\tools\Squirrel.exe");
 
         private const string staging_folder = "staging";
+        private const string templates_folder = "templates";
         private const string releases_folder = "releases";
 
         /// <summary>
@@ -51,6 +51,7 @@ namespace osu.Desktop.Deploy
         private static string solutionPath;
 
         private static string stagingPath => Path.Combine(Environment.CurrentDirectory, staging_folder);
+        private static string templatesPath => Path.Combine(Environment.CurrentDirectory, templates_folder);
         private static string releasesPath => Path.Combine(Environment.CurrentDirectory, releases_folder);
         private static string iconPath => Path.Combine(solutionPath, ProjectName, IconName);
 
@@ -92,15 +93,19 @@ namespace osu.Desktop.Deploy
 
             string version = $"{verBase}{increment}";
 
+            var targetPlatform = RuntimeInfo.OS;
+
             if (args.Length > 1 && !string.IsNullOrEmpty(args[1]))
                 version = args[1];
+            if (args.Length > 2 && !string.IsNullOrEmpty(args[2]))
+                Enum.TryParse(args[2], true, out targetPlatform);
 
             Console.ResetColor();
             Console.WriteLine($"Increment Version:     {IncrementVersion}");
             Console.WriteLine($"Signing Certificate:   {CodeSigningCertificate}");
             Console.WriteLine($"Upload to GitHub:      {GitHubUpload}");
             Console.WriteLine();
-            Console.Write($"Ready to deploy {version}!");
+            Console.Write($"Ready to deploy version {version} on platform {targetPlatform}!");
 
             pauseIfInteractive();
 
@@ -111,7 +116,7 @@ namespace osu.Desktop.Deploy
 
             write("Running build process...");
 
-            switch (RuntimeInfo.OS)
+            switch (targetPlatform)
             {
                 case RuntimeInfo.Platform.Windows:
                     getAssetsFromRelease(lastRelease);
@@ -168,7 +173,7 @@ namespace osu.Desktop.Deploy
                     runCommand("unzip", $"\"osu!.app-template.zip\" -d {stagingPath}", false);
 
                     // without touching the app bundle itself, changes to file associations / icons / etc. will be cached at a macOS level and not updated.
-                    runCommand("touch" ,$"\"{Path.Combine(stagingPath, "osu!.app")}\" -d {stagingPath}", false);
+                    runCommand("touch", $"\"{Path.Combine(stagingPath, "osu!.app")}\" -d {stagingPath}", false);
 
                     runCommand("dotnet", $"publish -r osx-x64 {ProjectName} --configuration Release -o {stagingPath}/osu!.app/Contents/MacOS /p:Version={version}");
 
@@ -212,33 +217,46 @@ namespace osu.Desktop.Deploy
                     break;
 
                 case RuntimeInfo.Platform.Linux:
-                    // avoid use of unzip on Linux system, it is not preinstalled by default
-                    ZipFile.ExtractToDirectory("osu!.AppDir-template.zip", $"{stagingPath}");
+                    const string app_dir = "osu!.AppDir";
+
+                    string stagingTarget = Path.Combine(stagingPath, app_dir);
+
+                    if (Directory.Exists(stagingTarget))
+                        Directory.Delete(stagingTarget, true);
+
+                    Directory.CreateDirectory(stagingTarget);
+
+                    foreach (var file in Directory.GetFiles(Path.Combine(templatesPath, app_dir)))
+                        new FileInfo(file).CopyTo(Path.Combine(stagingTarget, Path.GetFileName(file)));
 
                     // mark AppRun as executable, as zip does not contains executable information
-                    runCommand("chmod", $"+x {stagingPath}/osu!.AppDir/AppRun");
+                    runCommand("chmod", $"+x {stagingTarget}/AppRun");
 
-                    runCommand("dotnet", $"publish -f net5.0 -r linux-x64 {ProjectName} -o {stagingPath}/osu!.AppDir/usr/bin/ --configuration Release /p:Version={version} --self-contained");
+                    runCommand("dotnet", $"publish -f net5.0 -r linux-x64 {ProjectName} -o {stagingTarget}/usr/bin/ --configuration Release /p:Version={version} --self-contained");
 
                     // mark output as executable
-                    runCommand("chmod", $"+x {stagingPath}/osu!.AppDir/usr/bin/osu!");
+                    runCommand("chmod", $"+x {stagingTarget}/usr/bin/osu!");
 
                     // copy png icon (for desktop file)
-                    File.Copy(Path.Combine(solutionPath, "assets/lazer.png"), $"{stagingPath}/osu!.AppDir/osu!.png");
+                    File.Copy(Path.Combine(solutionPath, "assets/lazer.png"), $"{stagingTarget}/osu!.png");
 
                     // download appimagetool
+                    string appImageToolPath = $"{stagingPath}/appimagetool.AppImage";
+
                     using (var client = new WebClient())
-                        client.DownloadFile("https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage", $"{stagingPath}/appimagetool.AppImage");
+                    {
+                        client.DownloadFile("https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage", appImageToolPath);
+                    }
 
                     // mark appimagetool as executable
-                    runCommand("chmod", $"a+x {stagingPath}/appimagetool.AppImage");
+                    runCommand("chmod", $"a+x {appImageToolPath}");
 
                     // create AppImage itself
                     // gh-releases-zsync stands here for GitHub Releases ZSync, that is a way to check for updates
                     // ppy|osu|latest stands for https://github.com/ppy/osu and get the latest release
                     // osu.AppImage.zsync is AppImage update information file, that is generated by the tool
                     // more information there https://docs.appimage.org/packaging-guide/optional/updates.html?highlight=update#using-appimagetool
-                    runCommand($"{stagingPath}/appimagetool.AppImage", $"\"{stagingPath}/osu!.AppDir\" -u \"gh-releases-zsync|ppy|osu|latest|osu.AppImage.zsync\" \"{Path.Combine(Environment.CurrentDirectory, "releases")}/osu.AppImage\" --sign", false);
+                    runCommand(appImageToolPath, $"\"{stagingTarget}\" -u \"gh-releases-zsync|ppy|osu|latest|osu.AppImage.zsync\" \"{Path.Combine(Environment.CurrentDirectory, "releases")}/osu.AppImage\" --sign", false);
 
                     // mark finally the osu! AppImage as executable -> Don't compress it.
                     runCommand("chmod", $"+x \"{Path.Combine(Environment.CurrentDirectory, "releases")}/osu.AppImage\"");
