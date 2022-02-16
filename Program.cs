@@ -8,11 +8,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Management.Automation;
-using System.Net;
 using System.Net.Http;
 using System.Threading;
 using Newtonsoft.Json;
 using osu.Framework;
+using osu.Framework.Extensions;
 using osu.Framework.IO.Network;
 using FileWebRequest = osu.Framework.IO.Network.FileWebRequest;
 using WebRequest = osu.Framework.IO.Network.WebRequest;
@@ -243,9 +243,13 @@ namespace osu.Desktop.Deploy
                     // download appimagetool
                     string appImageToolPath = $"{stagingPath}/appimagetool.AppImage";
 
-                    using (var client = new WebClient())
+                    using (var client = new HttpClient())
                     {
-                        client.DownloadFile("https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage", appImageToolPath);
+                        using (var stream = client.GetStreamAsync("https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage").GetResultSafely())
+                        using (var fileStream = new FileStream(appImageToolPath, FileMode.CreateNew))
+                        {
+                            stream.CopyToAsync(fileStream).WaitSafely();
+                        }
                     }
 
                     // mark appimagetool as executable
