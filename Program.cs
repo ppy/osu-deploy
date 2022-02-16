@@ -143,7 +143,9 @@ namespace osu.Desktop.Deploy
                     if (!string.IsNullOrEmpty(CodeSigningCertificate))
                     {
                         if (args.Length > 0)
+                        {
                             codeSigningPassword = args[0];
+                        }
                         else
                         {
                             Console.Write("Enter code signing password: ");
@@ -295,6 +297,7 @@ namespace osu.Desktop.Deploy
         private static void checkReleaseFiles()
         {
             if (!canGitHub) return;
+
             var releaseLines = getReleaseLines();
 
             //ensure we have all files necessary
@@ -303,7 +306,10 @@ namespace osu.Desktop.Deploy
                     error($"Local file missing {l.Filename}");
         }
 
-        private static IEnumerable<ReleaseLine> getReleaseLines() => File.ReadAllLines(Path.Combine(releases_folder, "RELEASES")).Select(l => new ReleaseLine(l));
+        private static IEnumerable<ReleaseLine> getReleaseLines()
+        {
+            return File.ReadAllLines(Path.Combine(releases_folder, "RELEASES")).Select(l => new ReleaseLine(l));
+        }
 
         private static void pruneReleases()
         {
@@ -392,11 +398,14 @@ namespace osu.Desktop.Deploy
             openGitHubReleasePage();
         }
 
-        private static void openGitHubReleasePage() => Process.Start(new ProcessStartInfo
+        private static void openGitHubReleasePage()
         {
-            FileName = $"https://github.com/{GitHubUsername}/{GitHubRepoName}/releases",
-            UseShellExecute = true //see https://github.com/dotnet/corefx/issues/10361
-        });
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = $"https://github.com/{GitHubUsername}/{GitHubRepoName}/releases",
+                UseShellExecute = true //see https://github.com/dotnet/corefx/issues/10361
+            });
+        }
 
         private static bool canGitHub => !string.IsNullOrEmpty(GitHubAccessToken);
 
@@ -613,6 +622,9 @@ namespace osu.Desktop.Deploy
             Filesize = int.Parse(split[2]);
         }
 
-        public override string ToString() => $"{Hash} {Filename} {Filesize}";
+        public override string ToString()
+        {
+            return $"{Hash} {Filename} {Filesize}";
+        }
     }
 }
