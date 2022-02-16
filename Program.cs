@@ -121,7 +121,7 @@ namespace osu.Desktop.Deploy
                 case RuntimeInfo.Platform.Windows:
                     getAssetsFromRelease(lastRelease);
 
-                    runCommand("dotnet", $"publish -f net5.0 -r win-x64 {ProjectName} -o {stagingPath} --configuration Release /p:Version={version}");
+                    runCommand("dotnet", $"publish -f net6.0 -r win-x64 {ProjectName} -o {stagingPath} --configuration Release /p:Version={version}");
 
                     // change subsystem of dotnet stub to WINDOWS (defaults to console; no way to change this yet https://github.com/dotnet/core-setup/issues/196)
                     runCommand("tools/editbin.exe", $"/SUBSYSTEM:WINDOWS {stagingPath}\\osu!.exe");
@@ -232,7 +232,7 @@ namespace osu.Desktop.Deploy
                     // mark AppRun as executable, as zip does not contains executable information
                     runCommand("chmod", $"+x {stagingTarget}/AppRun");
 
-                    runCommand("dotnet", $"publish -f net5.0 -r linux-x64 {ProjectName} -o {stagingTarget}/usr/bin/ --configuration Release /p:Version={version} --self-contained");
+                    runCommand("dotnet", $"publish -f net6.0 -r linux-x64 {ProjectName} -o {stagingTarget}/usr/bin/ --configuration Release /p:Version={version} --self-contained");
 
                     // mark output as executable
                     runCommand("chmod", $"+x {stagingTarget}/usr/bin/osu!");
