@@ -22,8 +22,8 @@ namespace osu.Desktop.Deploy
     internal static class Program
     {
         private static string packages => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
-        private static string nugetPath => Path.Combine(packages, @"nuget.commandline\4.7.1\tools\NuGet.exe");
-        private static string squirrelPath => Path.Combine(packages, @"ppy.squirrel.windows\1.9.0.5\tools\Squirrel.exe");
+        private static string nugetPath => Path.Combine(packages, @"nuget.commandline\6.0.0\tools\NuGet.exe");
+        private static string squirrelPath => Path.Combine(packages, @"clowd.squirrel\2.8.15-pre\tools\Squirrel.exe");
 
         private const string staging_folder = "staging";
         private const string templates_folder = "templates";
@@ -156,18 +156,18 @@ namespace osu.Desktop.Deploy
                     string codeSigningCertPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), CodeSigningCertificate);
                     string codeSigningCmd = string.IsNullOrEmpty(codeSigningPassword)
                         ? ""
-                        : $"-n \"/td sha256 /fd sha256 /f {codeSigningCertPath} /p {codeSigningPassword} /tr http://timestamp.comodoca.com\"";
+                        : $"--signParams=\"/td sha256 /fd sha256 /f {codeSigningCertPath} /p {codeSigningPassword} /tr http://timestamp.comodoca.com\"";
 
                     string nupkgFilename = $"{PackageName}.{version}.nupkg";
 
-                    runCommand(squirrelPath, $"--releasify {stagingPath}\\{nupkgFilename} -r {releasesPath} --setupIcon {iconPath} --icon {iconPath} {codeSigningCmd} --no-msi");
+                    runCommand(squirrelPath, $"releasify --package={stagingPath}\\{nupkgFilename} --releaseDir={releasesPath} --icon={iconPath} --appIcon={iconPath} {codeSigningCmd}");
 
                     // prune again to clean up before upload.
                     pruneReleases();
 
                     // rename setup to install.
-                    File.Copy(Path.Combine(releases_folder, "Setup.exe"), Path.Combine(releases_folder, "install.exe"), true);
-                    File.Delete(Path.Combine(releases_folder, "Setup.exe"));
+                    File.Copy(Path.Combine(releases_folder, "osulazerSetup.exe"), Path.Combine(releases_folder, "install.exe"), true);
+                    File.Delete(Path.Combine(releases_folder, "osulazerSetup.exe"));
                     break;
                 case RuntimeInfo.Platform.macOS:
 
