@@ -54,6 +54,7 @@ namespace osu.Desktop.Deploy
         private static string templatesPath => Path.Combine(Environment.CurrentDirectory, templates_folder);
         private static string releasesPath => Path.Combine(Environment.CurrentDirectory, releases_folder);
         private static string iconPath => Path.Combine(solutionPath, ProjectName, IconName);
+        private static string splashImagePath => Path.Combine(solutionPath, "assets\\lazer-nuget.png");
 
         private static readonly Stopwatch stopwatch = new Stopwatch();
 
@@ -160,7 +161,7 @@ namespace osu.Desktop.Deploy
 
                     string nupkgFilename = $"{PackageName}.{version}.nupkg";
 
-                    runCommand(squirrelPath, $"releasify --package={stagingPath}\\{nupkgFilename} --releaseDir={releasesPath} --icon={iconPath} --appIcon={iconPath} {codeSigningCmd}");
+                    runCommand(squirrelPath, $"releasify --package={stagingPath}\\{nupkgFilename} --releaseDir={releasesPath} --icon={iconPath} --appIcon={iconPath} --splashImage={splashImagePath} {codeSigningCmd}");
 
                     // prune again to clean up before upload.
                     pruneReleases();
