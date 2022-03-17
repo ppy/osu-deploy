@@ -170,9 +170,23 @@ namespace osu.Desktop.Deploy
                     File.Copy(Path.Combine(releases_folder, "osulazerSetup.exe"), Path.Combine(releases_folder, "install.exe"), true);
                     File.Delete(Path.Combine(releases_folder, "osulazerSetup.exe"));
                     break;
+
                 case RuntimeInfo.Platform.macOS:
-                    buildForMac("x64", version);
-                    buildForMac("arm64", version);
+                    string targetArch = "";
+                    if (args.Length > 0)
+                    {
+                        targetArch = args[0];
+                    }
+                    else if (interactive)
+                    {
+                        Console.Write("Build for which architecture? [x64/arm64]: ");
+                        targetArch = Console.ReadLine();
+                    }
+
+                    if (targetArch != "x64" && targetArch != "arm64")
+                        error($"Invalid Architecture: {targetArch}");
+
+                    buildForMac(targetArch, version);
                     break;
 
                 case RuntimeInfo.Platform.Linux:
@@ -249,20 +263,15 @@ namespace osu.Desktop.Deploy
 
         private static void buildForMac(string arch, string version)
         {
-            string stagingPathWithArch = Path.Combine(stagingPath, arch);
-
-            if (!Directory.Exists(stagingPathWithArch))
-                Directory.CreateDirectory(stagingPathWithArch);
-
             // unzip the template app, with all structure existing except for dotnet published content.
-            runCommand("unzip", $"\"osu!.app-template.zip\" -d {stagingPathWithArch}", false);
+            runCommand("unzip", $"\"osu!.app-template.zip\" -d {stagingPath}", false);
 
             // without touching the app bundle itself, changes to file associations / icons / etc. will be cached at a macOS level and not updated.
-            runCommand("touch", $"\"{Path.Combine(stagingPathWithArch, "osu!.app")}\" -d {stagingPathWithArch}", false);
+            runCommand("touch", $"\"{Path.Combine(stagingPath, "osu!.app")}\" {stagingPath}", false);
 
-            runCommand("dotnet", $"publish -r osx-{arch} {ProjectName} --configuration Release -o {stagingPathWithArch}/osu!.app/Contents/MacOS /p:Version={version}");
+            runCommand("dotnet", $"publish -r osx-{arch} {ProjectName} --configuration Release -o {stagingPath}/osu!.app/Contents/MacOS /p:Version={version}");
 
-            string stagingApp = $"{stagingPathWithArch}/osu!.app";
+            string stagingApp = $"{stagingPath}/osu!.app";
             string archLabel = arch == "x64" ? "Intel" : "Apple Silicon";
             string zippedApp = $"{releasesPath}/osu!.app ({archLabel}).zip";
 
