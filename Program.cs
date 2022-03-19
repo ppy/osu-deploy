@@ -170,53 +170,23 @@ namespace osu.Desktop.Deploy
                     File.Copy(Path.Combine(releases_folder, "osulazerSetup.exe"), Path.Combine(releases_folder, "install.exe"), true);
                     File.Delete(Path.Combine(releases_folder, "osulazerSetup.exe"));
                     break;
+
                 case RuntimeInfo.Platform.macOS:
-
-                    // unzip the template app, with all structure existing except for dotnet published content.
-                    runCommand("unzip", $"\"osu!.app-template.zip\" -d {stagingPath}", false);
-
-                    // without touching the app bundle itself, changes to file associations / icons / etc. will be cached at a macOS level and not updated.
-                    runCommand("touch", $"\"{Path.Combine(stagingPath, "osu!.app")}\" -d {stagingPath}", false);
-
-                    runCommand("dotnet", $"publish -r osx-x64 {ProjectName} --configuration Release -o {stagingPath}/osu!.app/Contents/MacOS /p:Version={version}");
-
-                    string stagingApp = $"{stagingPath}/osu!.app";
-                    string zippedApp = $"{releasesPath}/osu!.app.zip";
-
-                    // correct permissions post-build. dotnet outputs 644 by default; we want 755.
-                    runCommand("chmod", $"-R 755 {stagingApp}");
-
-                    if (!string.IsNullOrEmpty(CodeSigningCertificate))
+                    string targetArch = "";
+                    if (args.Length > 0)
                     {
-                        // sign using apple codesign
-                        runCommand("codesign", $"--deep --force --verify --entitlements {Path.Combine(Environment.CurrentDirectory, "osu.entitlements")} -o runtime --verbose --sign \"{CodeSigningCertificate}\" {stagingApp}");
-
-                        // check codesign was successful
-                        runCommand("spctl", $"--assess -vvvv {stagingApp}");
+                        targetArch = args[0];
+                    }
+                    else if (interactive)
+                    {
+                        Console.Write("Build for which architecture? [x64/arm64]: ");
+                        targetArch = Console.ReadLine();
                     }
 
-                    // package for distribution
-                    runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingApp} {zippedApp}");
+                    if (targetArch != "x64" && targetArch != "arm64")
+                        error($"Invalid Architecture: {targetArch}");
 
-                    string notarisationUsername = ConfigurationManager.AppSettings["AppleUsername"];
-
-                    if (!string.IsNullOrEmpty(notarisationUsername))
-                    {
-                        // upload for notarisation
-                        runCommand("xcrun", $"altool --notarize-app --primary-bundle-id \"sh.ppy.osu.lazer\" --username \"{notarisationUsername}\" --password \"{ConfigurationManager.AppSettings["ApplePassword"]}\" --file {zippedApp}");
-                        // TODO: make this actually wait properly
-                        write("Waiting for notarisation to complete..");
-                        Thread.Sleep(60000 * 5);
-
-                        // staple notarisation result
-                        runCommand("xcrun", $"stapler staple {stagingApp}");
-                    }
-
-
-                    File.Delete(zippedApp);
-
-                    // repackage for distribution
-                    runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingApp} {zippedApp}");
+                    buildForMac(targetArch, version);
                     break;
 
                 case RuntimeInfo.Platform.Linux:
@@ -289,6 +259,55 @@ namespace osu.Desktop.Deploy
             Console.WriteLine("  Do not distribute builds of this project publicly that make use of these.");
             Console.ResetColor();
             Console.WriteLine();
+        }
+
+        private static void buildForMac(string arch, string version)
+        {
+            // unzip the template app, with all structure existing except for dotnet published content.
+            runCommand("unzip", $"\"osu!.app-template.zip\" -d {stagingPath}", false);
+
+            // without touching the app bundle itself, changes to file associations / icons / etc. will be cached at a macOS level and not updated.
+            runCommand("touch", $"\"{Path.Combine(stagingPath, "osu!.app")}\" {stagingPath}", false);
+
+            runCommand("dotnet", $"publish -r osx-{arch} {ProjectName} --configuration Release -o {stagingPath}/osu!.app/Contents/MacOS /p:Version={version}");
+
+            string stagingApp = $"{stagingPath}/osu!.app";
+            string archLabel = arch == "x64" ? "Intel" : "Apple Silicon";
+            string zippedApp = $"{releasesPath}/osu!.app ({archLabel}).zip";
+
+            // correct permissions post-build. dotnet outputs 644 by default; we want 755.
+            runCommand("chmod", $"-R 755 {stagingApp}");
+
+            if (!string.IsNullOrEmpty(CodeSigningCertificate))
+            {
+                // sign using apple codesign
+                runCommand("codesign", $"--deep --force --verify --entitlements {Path.Combine(Environment.CurrentDirectory, "osu.entitlements")} -o runtime --verbose --sign \"{CodeSigningCertificate}\" {stagingApp}");
+
+                // check codesign was successful
+                runCommand("spctl", $"--assess -vvvv {stagingApp}");
+            }
+
+            // package for distribution
+            runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingApp} \"{zippedApp}\"");
+
+            string notarisationUsername = ConfigurationManager.AppSettings["AppleUsername"];
+
+            if (!string.IsNullOrEmpty(notarisationUsername))
+            {
+                // upload for notarisation
+                runCommand("xcrun", $"altool --notarize-app --primary-bundle-id \"sh.ppy.osu.lazer\" --username \"{notarisationUsername}\" --password \"{ConfigurationManager.AppSettings["ApplePassword"]}\" --file {zippedApp}");
+                // TODO: make this actually wait properly
+                write("Waiting for notarisation to complete..");
+                Thread.Sleep(60000 * 5);
+
+                // staple notarisation result
+                runCommand("xcrun", $"stapler staple {stagingApp}");
+            }
+
+            File.Delete(zippedApp);
+
+            // repackage for distribution
+            runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingApp} \"{zippedApp}\"");
         }
 
         /// <summary>
