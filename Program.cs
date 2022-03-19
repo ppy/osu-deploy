@@ -295,7 +295,7 @@ namespace osu.Desktop.Deploy
             if (!string.IsNullOrEmpty(notarisationUsername))
             {
                 // upload for notarisation
-                runCommand("xcrun", $"altool --notarize-app --primary-bundle-id \"sh.ppy.osu.lazer\" --username \"{notarisationUsername}\" --password \"{ConfigurationManager.AppSettings["ApplePassword"]}\" --file {zippedApp}");
+                runCommand("xcrun", $"altool --notarize-app --primary-bundle-id \"sh.ppy.osu.lazer\" --username \"{notarisationUsername}\" --password \"{ConfigurationManager.AppSettings["ApplePassword"]}\" --file \"{zippedApp}\"");
                 // TODO: make this actually wait properly
                 write("Waiting for notarisation to complete..");
                 Thread.Sleep(60000 * 5);
