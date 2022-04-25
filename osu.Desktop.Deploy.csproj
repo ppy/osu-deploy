@@ -6,7 +6,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup Label="Package References">
-    <PackageReference Include="Clowd.Squirrel" Version="2.9.23-gc8da1a" />
+    <PackageReference Include="Clowd.Squirrel" Version="2.9.39" />
     <PackageReference Include="Microsoft.PowerShell.SDK" Version="7.2.2" />
     <PackageReference Include="NuGet.CommandLine" Version="6.1.0">
       <PrivateAssets>all</PrivateAssets>
