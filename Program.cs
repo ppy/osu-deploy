@@ -124,9 +124,6 @@ namespace osu.Desktop.Deploy
 
                     runCommand("dotnet", $"publish -f net6.0 -r win-x64 {ProjectName} -o {stagingPath} --configuration Release /p:Version={version}");
 
-                    // change subsystem of dotnet stub to WINDOWS (defaults to console; no way to change this yet https://github.com/dotnet/core-setup/issues/196)
-                    runCommand("tools/editbin.exe", $"/SUBSYSTEM:WINDOWS {stagingPath}\\osu!.exe");
-
                     // add icon to dotnet stub
                     runCommand("tools/rcedit-x64.exe", $"\"{stagingPath}\\osu!.exe\" --set-icon \"{iconPath}\"");
 
