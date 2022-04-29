@@ -5,7 +5,6 @@ Name=osu!
 Comment=A free-to-win rhythm game. Rhythm is just a *click* away!
 Icon=osu!
 Exec=osu!
-Path=~
 Terminal=false
 Categories=Game;
 
