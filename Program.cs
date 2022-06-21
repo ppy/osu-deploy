@@ -34,27 +34,46 @@ namespace osu.Desktop.Deploy
         /// </summary>
         private const int keep_delta_count = 4;
 
-        public static string GitHubAccessToken = ConfigurationManager.AppSettings["GitHubAccessToken"];
+        public static string? GitHubAccessToken = ConfigurationManager.AppSettings["GitHubAccessToken"];
         public static bool GitHubUpload = bool.Parse(ConfigurationManager.AppSettings["GitHubUpload"] ?? "false");
-        public static string GitHubUsername = ConfigurationManager.AppSettings["GitHubUsername"];
-        public static string GitHubRepoName = ConfigurationManager.AppSettings["GitHubRepoName"];
-        public static string SolutionName = ConfigurationManager.AppSettings["SolutionName"];
-        public static string ProjectName = ConfigurationManager.AppSettings["ProjectName"];
-        public static string NuSpecName = ConfigurationManager.AppSettings["NuSpecName"];
+        public static string? GitHubUsername = ConfigurationManager.AppSettings["GitHubUsername"];
+        public static string? GitHubRepoName = ConfigurationManager.AppSettings["GitHubRepoName"];
+        public static string? SolutionName = ConfigurationManager.AppSettings["SolutionName"];
+        public static string? ProjectName = ConfigurationManager.AppSettings["ProjectName"];
+        public static string? NuSpecName = ConfigurationManager.AppSettings["NuSpecName"];
         public static bool IncrementVersion = bool.Parse(ConfigurationManager.AppSettings["IncrementVersion"] ?? "true");
-        public static string PackageName = ConfigurationManager.AppSettings["PackageName"];
-        public static string IconName = ConfigurationManager.AppSettings["IconName"];
-        public static string CodeSigningCertificate = ConfigurationManager.AppSettings["CodeSigningCertificate"];
+        public static string? PackageName = ConfigurationManager.AppSettings["PackageName"];
+        public static string? IconName = ConfigurationManager.AppSettings["IconName"];
+        public static string? CodeSigningCertificate = ConfigurationManager.AppSettings["CodeSigningCertificate"];
 
         public static string GitHubApiEndpoint => $"https://api.github.com/repos/{GitHubUsername}/{GitHubRepoName}/releases";
 
-        private static string solutionPath;
+        private static string? solutionPath;
 
         private static string stagingPath => Path.Combine(Environment.CurrentDirectory, staging_folder);
         private static string templatesPath => Path.Combine(Environment.CurrentDirectory, templates_folder);
         private static string releasesPath => Path.Combine(Environment.CurrentDirectory, releases_folder);
-        private static string iconPath => Path.Combine(solutionPath, ProjectName, IconName);
-        private static string splashImagePath => Path.Combine(solutionPath, "assets\\lazer-nuget.png");
+
+        private static string iconPath
+        {
+            get
+            {
+                Debug.Assert(solutionPath != null);
+                Debug.Assert(ProjectName != null);
+                Debug.Assert(IconName != null);
+
+                return Path.Combine(solutionPath, ProjectName, IconName);
+            }
+        }
+
+        private static string splashImagePath
+        {
+            get
+            {
+                Debug.Assert(solutionPath != null);
+                return Path.Combine(solutionPath, "assets\\lazer-nuget.png");
+            }
+        }
 
         private static readonly Stopwatch stopwatch = new Stopwatch();
 
@@ -73,7 +92,7 @@ namespace osu.Desktop.Deploy
                 Directory.CreateDirectory(releases_folder);
             }
 
-            GitHubRelease lastRelease = null;
+            GitHubRelease? lastRelease = null;
 
             if (canGitHub)
             {
@@ -115,12 +134,15 @@ namespace osu.Desktop.Deploy
             refreshDirectory(staging_folder);
             updateAppveyorVersion(version);
 
+            Debug.Assert(solutionPath != null);
+
             write("Running build process...");
 
             switch (targetPlatform)
             {
                 case RuntimeInfo.Platform.Windows:
-                    getAssetsFromRelease(lastRelease);
+                    if (lastRelease != null)
+                        getAssetsFromRelease(lastRelease);
 
                     runCommand("dotnet", $"publish -f net6.0 -r win-x64 {ProjectName} -o {stagingPath} --configuration Release /p:Version={version}");
 
@@ -137,9 +159,12 @@ namespace osu.Desktop.Deploy
 
                     write("Running squirrel build...");
 
-                    string codeSigningPassword = string.Empty;
+                    string codeSigningCmd = string.Empty;
+
                     if (!string.IsNullOrEmpty(CodeSigningCertificate))
                     {
+                        string? codeSigningPassword;
+
                         if (args.Length > 0)
                         {
                             codeSigningPassword = args[0];
@@ -149,12 +174,13 @@ namespace osu.Desktop.Deploy
                             Console.Write("Enter code signing password: ");
                             codeSigningPassword = readLineMasked();
                         }
+
+                        string codeSigningCertPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), CodeSigningCertificate);
+                        codeSigningCmd = string.IsNullOrEmpty(codeSigningPassword)
+                            ? ""
+                            : $"--signParams=\"/td sha256 /fd sha256 /f {codeSigningCertPath} /p {codeSigningPassword} /tr http://timestamp.comodoca.com\"";
                     }
 
-                    string codeSigningCertPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), CodeSigningCertificate);
-                    string codeSigningCmd = string.IsNullOrEmpty(codeSigningPassword)
-                        ? ""
-                        : $"--signParams=\"/td sha256 /fd sha256 /f {codeSigningCertPath} /p {codeSigningPassword} /tr http://timestamp.comodoca.com\"";
 
                     string nupkgFilename = $"{PackageName}.{version}.nupkg";
 
@@ -178,7 +204,7 @@ namespace osu.Desktop.Deploy
                     else if (interactive)
                     {
                         Console.Write("Build for which architecture? [x64/arm64]: ");
-                        targetArch = Console.ReadLine();
+                        targetArch = Console.ReadLine() ?? string.Empty;
                     }
 
                     if (targetArch != "x64" && targetArch != "arm64")
@@ -290,7 +316,7 @@ namespace osu.Desktop.Deploy
             // package for distribution
             runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingApp} \"{zippedApp}\"");
 
-            string notarisationUsername = ConfigurationManager.AppSettings["AppleUsername"];
+            string notarisationUsername = ConfigurationManager.AppSettings["AppleUsername"] ?? string.Empty;
 
             if (!string.IsNullOrEmpty(notarisationUsername))
             {
@@ -379,7 +405,7 @@ namespace osu.Desktop.Deploy
                 Method = HttpMethod.Post,
             };
 
-            GitHubRelease targetRelease = getLastGithubRelease(true);
+            GitHubRelease? targetRelease = getLastGithubRelease(true);
 
             if (targetRelease == null || targetRelease.TagName != version)
             {
@@ -397,6 +423,8 @@ namespace osu.Desktop.Deploy
             {
                 write($"- Adding to existing release {version}...", ConsoleColor.Yellow);
             }
+
+            Debug.Assert(targetRelease.UploadUrl != null);
 
             var assetUploadUrl = targetRelease.UploadUrl.Replace("{?name,label}", "?name={0}");
             foreach (var a in Directory.GetFiles(releases_folder).Reverse()) //reverse to upload RELEASES first.
@@ -430,7 +458,7 @@ namespace osu.Desktop.Deploy
 
         private static bool canGitHub => !string.IsNullOrEmpty(GitHubAccessToken);
 
-        private static GitHubRelease getLastGithubRelease(bool includeDrafts = false)
+        private static GitHubRelease? getLastGithubRelease(bool includeDrafts = false)
         {
             var req = new JsonWebRequest<List<GitHubRelease>>($"{GitHubApiEndpoint}");
             req.AuthenticatedBlockingPerform();
@@ -500,7 +528,7 @@ namespace osu.Desktop.Deploy
         /// </summary>
         private static void findSolutionPath()
         {
-            string path = Path.GetDirectoryName(Environment.CommandLine.Replace("\"", "").Trim());
+            string? path = Path.GetDirectoryName(Environment.CommandLine.Replace("\"", "").Trim());
 
             if (string.IsNullOrEmpty(path))
                 path = Environment.CurrentDirectory;
@@ -538,7 +566,7 @@ namespace osu.Desktop.Deploy
                 WindowStyle = ProcessWindowStyle.Hidden
             };
 
-            Process p = Process.Start(psi);
+            Process? p = Process.Start(psi);
             if (p == null) return false;
 
             string output = p.StandardOutput.ReadToEnd();
@@ -553,7 +581,7 @@ namespace osu.Desktop.Deploy
             return false;
         }
 
-        private static string readLineMasked()
+        private static string? readLineMasked()
         {
             var fg = Console.ForegroundColor;
             Console.ForegroundColor = Console.BackgroundColor;

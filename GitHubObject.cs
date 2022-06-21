@@ -11,6 +11,6 @@ namespace osu.Desktop.Deploy
         public int Id;
 
         [JsonProperty(@"name")]
-        public string Name;
+        public string Name = string.Empty;
     }
 }

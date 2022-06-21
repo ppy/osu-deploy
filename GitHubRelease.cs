@@ -14,7 +14,7 @@ namespace osu.Desktop.Deploy
         public string TagName => $"{Name}";
 
         [JsonProperty(@"name")]
-        public string Name;
+        public string Name = string.Empty;
 
         [JsonProperty(@"draft")]
         public bool Draft;
@@ -23,6 +23,6 @@ namespace osu.Desktop.Deploy
         public bool PreRelease;
 
         [JsonProperty(@"upload_url")]
-        public string UploadUrl;
+        public string UploadUrl = string.Empty;
     }
 }

@@ -4,6 +4,7 @@
     <OutputType>Exe</OutputType>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup Label="Package References">
     <PackageReference Include="Clowd.Squirrel" Version="2.9.40" />
