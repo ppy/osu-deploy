@@ -609,7 +609,7 @@ namespace osu.Desktop.Deploy
             if (match.Count == 0)
                 throw new InvalidOperationException($"Missing tool for {toolExecutable}");
 
-            var toolPath = Path.Combine(packages, packageName.ToLower(), match[0].Groups[1].Value.Trim(), "tools", toolExecutable);
+            var toolPath = Path.Combine(packages, packageName.ToLowerInvariant(), match[0].Groups[1].Value.Trim(), "tools", toolExecutable);
 
             return toolPath;
         }
