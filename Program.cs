@@ -84,7 +84,7 @@ namespace osu.Desktop.Deploy
             interactive = args.Length == 0;
             displayHeader();
 
-            findSolutionPath();
+            solutionPath = findSolution(SolutionName);
 
             if (!Directory.Exists(releases_folder))
             {
@@ -526,7 +526,7 @@ namespace osu.Desktop.Deploy
         /// <summary>
         /// Find the base path of the active solution (git checkout location)
         /// </summary>
-        private static void findSolutionPath()
+        private static string findSolution(string? name)
         {
             string? path = Path.GetDirectoryName(Environment.CommandLine.Replace("\"", "").Trim());
 
@@ -535,10 +535,10 @@ namespace osu.Desktop.Deploy
 
             while (true)
             {
-                if (File.Exists(Path.Combine(path, $"{SolutionName}.sln")))
+                if (File.Exists(Path.Combine(path, $"{name}.sln")))
                     break;
 
-                if (Directory.Exists(Path.Combine(path, "osu")) && File.Exists(Path.Combine(path, "osu", $"{SolutionName}.sln")))
+                if (Directory.Exists(Path.Combine(path, "osu")) && File.Exists(Path.Combine(path, "osu", $"{name}.sln")))
                 {
                     path = Path.Combine(path, "osu");
                     break;
@@ -549,7 +549,7 @@ namespace osu.Desktop.Deploy
 
             path += Path.DirectorySeparatorChar;
 
-            solutionPath = path;
+            return path;
         }
 
         private static bool runCommand(string command, string args, bool useSolutionPath = true)
