@@ -49,6 +49,7 @@ namespace osu.Desktop.Deploy
         public static string GitHubApiEndpoint => $"https://api.github.com/repos/{GitHubUsername}/{GitHubRepoName}/releases";
 
         private static string? solutionPath;
+        private static readonly string currentSolutionPath = findSolution("osu-deploy");
 
         private static string stagingPath => Path.Combine(Environment.CurrentDirectory, staging_folder);
         private static string templatesPath => Path.Combine(Environment.CurrentDirectory, templates_folder);
@@ -595,7 +596,8 @@ namespace osu.Desktop.Deploy
         {
             var process = Process.Start(new ProcessStartInfo("dotnet", "list osu.Desktop.Deploy.csproj package")
             {
-                RedirectStandardOutput = true
+                RedirectStandardOutput = true,
+                WorkingDirectory = currentSolutionPath
             });
 
             Debug.Assert(process != null);
