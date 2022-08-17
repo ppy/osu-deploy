@@ -87,10 +87,10 @@ namespace osu.Desktop.Deploy
 
             solutionPath = findSolution(SolutionName);
 
-            if (!Directory.Exists(releases_folder))
+            if (!Directory.Exists(releasesPath))
             {
                 write("WARNING: No release directory found. Make sure you want this!", ConsoleColor.Yellow);
-                Directory.CreateDirectory(releases_folder);
+                Directory.CreateDirectory(releasesPath);
             }
 
             GitHubRelease? lastRelease = null;
@@ -132,7 +132,7 @@ namespace osu.Desktop.Deploy
 
             stopwatch.Start();
 
-            refreshDirectory(staging_folder);
+            refreshDirectory(stagingPath);
             updateAppveyorVersion(version);
 
             Debug.Assert(solutionPath != null);
@@ -192,8 +192,8 @@ namespace osu.Desktop.Deploy
                     pruneReleases();
 
                     // rename setup to install.
-                    File.Copy(Path.Combine(releases_folder, "osulazerSetup.exe"), Path.Combine(releases_folder, "install.exe"), true);
-                    File.Delete(Path.Combine(releases_folder, "osulazerSetup.exe"));
+                    File.Copy(Path.Combine(releasesPath, "osulazerSetup.exe"), Path.Combine(releasesPath, "install.exe"), true);
+                    File.Delete(Path.Combine(releasesPath, "osulazerSetup.exe"));
                     break;
 
                 case RuntimeInfo.Platform.macOS:
@@ -350,13 +350,13 @@ namespace osu.Desktop.Deploy
 
             //ensure we have all files necessary
             foreach (var l in releaseLines)
-                if (!File.Exists(Path.Combine(releases_folder, l.Filename)))
+                if (!File.Exists(Path.Combine(releasesPath, l.Filename)))
                     error($"Local file missing {l.Filename}");
         }
 
         private static IEnumerable<ReleaseLine> getReleaseLines()
         {
-            return File.ReadAllLines(Path.Combine(releases_folder, "RELEASES")).Select(l => new ReleaseLine(l));
+            return File.ReadAllLines(Path.Combine(releasesPath, "RELEASES")).Select(l => new ReleaseLine(l));
         }
 
         private static void pruneReleases()
@@ -373,7 +373,7 @@ namespace osu.Desktop.Deploy
             foreach (var l in fulls)
             {
                 write($"- Removing old release {l.Filename}", ConsoleColor.Yellow);
-                File.Delete(Path.Combine(releases_folder, l.Filename));
+                File.Delete(Path.Combine(releasesPath, l.Filename));
                 releaseLines.Remove(l);
             }
 
@@ -384,14 +384,14 @@ namespace osu.Desktop.Deploy
                 foreach (var l in deltas.Take(deltas.Length - keep_delta_count))
                 {
                     write($"- Removing old delta {l.Filename}", ConsoleColor.Yellow);
-                    File.Delete(Path.Combine(releases_folder, l.Filename));
+                    File.Delete(Path.Combine(releasesPath, l.Filename));
                     releaseLines.Remove(l);
                 }
             }
 
             var lines = new List<string>();
             releaseLines.ForEach(l => lines.Add(l.ToString()));
-            File.WriteAllLines(Path.Combine(releases_folder, "RELEASES"), lines);
+            File.WriteAllLines(Path.Combine(releasesPath, "RELEASES"), lines);
         }
 
         private static void uploadBuild(string version)
@@ -428,7 +428,7 @@ namespace osu.Desktop.Deploy
             Debug.Assert(targetRelease.UploadUrl != null);
 
             var assetUploadUrl = targetRelease.UploadUrl.Replace("{?name,label}", "?name={0}");
-            foreach (var a in Directory.GetFiles(releases_folder).Reverse()) //reverse to upload RELEASES first.
+            foreach (var a in Directory.GetFiles(releasesPath).Reverse()) //reverse to upload RELEASES first.
             {
                 if (Path.GetFileName(a).StartsWith('.'))
                     continue;
@@ -487,7 +487,7 @@ namespace osu.Desktop.Deploy
 
             bool requireDownload = false;
 
-            if (!File.Exists(Path.Combine(releases_folder, $"{PackageName}-{release.Name}-full.nupkg")))
+            if (!File.Exists(Path.Combine(releasesPath, $"{PackageName}-{release.Name}-full.nupkg")))
             {
                 write("Last version's package not found locally.", ConsoleColor.Red);
                 requireDownload = true;
@@ -496,7 +496,7 @@ namespace osu.Desktop.Deploy
             {
                 var lastReleases = new RawFileWebRequest($"{GitHubApiEndpoint}/assets/{releaseAsset.Id}");
                 lastReleases.AuthenticatedBlockingPerform();
-                if (File.ReadAllText(Path.Combine(releases_folder, "RELEASES")) != lastReleases.GetResponseString())
+                if (File.ReadAllText(Path.Combine(releasesPath, "RELEASES")) != lastReleases.GetResponseString())
                 {
                     write("Server's RELEASES differed from ours.", ConsoleColor.Red);
                     requireDownload = true;
@@ -506,14 +506,14 @@ namespace osu.Desktop.Deploy
             if (!requireDownload) return;
 
             write("Refreshing local releases directory...");
-            refreshDirectory(releases_folder);
+            refreshDirectory(releasesPath);
 
             foreach (var a in assets)
             {
                 if (a.Name != "RELEASES" && !a.Name.EndsWith(".nupkg", StringComparison.InvariantCulture)) continue;
 
                 write($"- Downloading {a.Name}...", ConsoleColor.Yellow);
-                new FileWebRequest(Path.Combine(releases_folder, a.Name), $"{GitHubApiEndpoint}/assets/{a.Id}").AuthenticatedBlockingPerform();
+                new FileWebRequest(Path.Combine(releasesPath, a.Name), $"{GitHubApiEndpoint}/assets/{a.Id}").AuthenticatedBlockingPerform();
             }
         }
 
