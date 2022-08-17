@@ -241,7 +241,7 @@ namespace osu.Desktop.Deploy
 
                     // download appimagetool
                     string appImageToolPath = $"{stagingPath}/appimagetool.AppImage";
-
+                    
                     if(!File.Exists(appImageToolPath))
                     {
                         using var client = new HttpClient();
