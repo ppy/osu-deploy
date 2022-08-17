@@ -245,7 +245,7 @@ namespace osu.Desktop.Deploy
                     if(!File.Exists(appImageToolPath))
                     {
                         using var client = new HttpClient();
-                        using var stream = client.GetStreamAsync("https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage").GetResultSafely();
+                        using var stream = client.GetStreamAsync("https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage").GetResultSafely();
                         using var fileStream = new FileStream(appImageToolPath, FileMode.CreateNew);
                         stream.CopyToAsync(fileStream).WaitSafely();
 
