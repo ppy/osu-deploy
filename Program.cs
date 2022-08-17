@@ -265,7 +265,7 @@ namespace osu.Desktop.Deploy
                     runCommand("chmod", $"+x \"{Path.Combine(currentSolutionPath, "releases")}/osu.AppImage\"");
 
                     // copy update information
-                    File.Move(Path.Combine(currentSolutionPath, "osu.AppImage.zsync"), $"{releases_folder}/osu.AppImage.zsync", true);
+                    File.Move(Path.Combine(currentSolutionPath, "osu.AppImage.zsync"), $"{releasesPath}/osu.AppImage.zsync", true);
 
                     break;
             }
