@@ -4,7 +4,7 @@ Type=Application
 Name=osu!
 Comment=A free-to-win rhythm game. Rhythm is just a *click* away!
 Icon=osu!
-Exec=osu!
+Exec=env COMPlus_GCGen0MaxBudget=600000 osu!
 Terminal=false
 Categories=Game;
 
