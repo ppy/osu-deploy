@@ -9,7 +9,7 @@
   <ItemGroup Label="Package References">
     <PackageReference Include="Clowd.Squirrel" Version="2.9.42" />
     <PackageReference Include="Microsoft.PowerShell.SDK" Version="7.2.6" />
-    <PackageReference Include="NuGet.CommandLine" Version="6.3.0">
+    <PackageReference Include="NuGet.CommandLine" Version="6.3.1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
