@@ -213,6 +213,44 @@ namespace osu.Desktop.Deploy
                     buildForMac(targetArch, version);
                     break;
 
+                case RuntimeInfo.Platform.Android:
+                    string codeSigningArguments = string.Empty;
+
+                    if (!string.IsNullOrEmpty(CodeSigningCertificate))
+                    {
+                        string? codeSigningPassword;
+
+                        if (args.Length > 0)
+                        {
+                            codeSigningPassword = args[0];
+                        }
+                        else
+                        {
+                            Console.Write("Enter code signing password: ");
+                            codeSigningPassword = readLineMasked();
+                        }
+
+                        codeSigningArguments += " -p:AndroidKeyStore=true"
+                                                + $" -p:AndroidSigningKeyStore={CodeSigningCertificate}"
+                                                + $" -p:AndroidSigningKeyAlias={CodeSigningCertificate.Replace(".keystore", "")}"
+                                                + $" -p:AndroidSigningKeyPass={codeSigningPassword}"
+                                                + $" -p:AndroidSigningStorePass={codeSigningPassword}";
+                    }
+
+                    runCommand("dotnet", "publish"
+                                         + " -f net6.0-android"
+                                         + " -r android-arm64"
+                                         + " -c Release"
+                                         + $" -p:Version={version}"
+                                         + $" -p:ApplicationVersion={version.Replace(".", "")}"
+                                         + codeSigningArguments
+                                         + " --self-contained"
+                                         + " osu.Android/osu.Android.csproj");
+
+                    // copy update information
+                    File.Move(Path.Combine(Environment.CurrentDirectory, "osu.Android/bin/Release/net6.0-android/android-arm64/publish/sh.ppy.osulazer-Signed.apk"), $"{releases_folder}/sh.ppy.osulazer.apk", true);
+                    break;
+
                 case RuntimeInfo.Platform.Linux:
                     const string app_dir = "osu!.AppDir";
 
