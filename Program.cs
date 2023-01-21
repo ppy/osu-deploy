@@ -237,13 +237,20 @@ namespace osu.Desktop.Deploy
                                                 + $" -p:AndroidSigningStorePass={codeSigningPassword}";
                     }
 
+                    string[] versionParts = version.Split('.');
+                    string appVersion = string.Join(
+                        versionParts[0].PadLeft(4, '0'),
+                        versionParts[1].PadLeft(4, '0'),
+                        versionParts[2].PadLeft(1, '0')
+                    );
+
                     runCommand("dotnet", "publish"
                                          + " -f net6.0-android"
                                          + " -r android-arm64"
                                          + " -c Release"
                                          + $" -o {stagingPath}"
                                          + $" -p:Version={version}"
-                                         + $" -p:ApplicationVersion={version.Replace(".", "")}"
+                                         + $" -p:ApplicationVersion={appVersion}"
                                          + codeSigningArguments
                                          + " --self-contained"
                                          + " osu.Android/osu.Android.csproj");
