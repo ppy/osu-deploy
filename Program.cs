@@ -232,7 +232,7 @@ namespace osu.Desktop.Deploy
 
                         codeSigningArguments += " -p:AndroidKeyStore=true"
                                                 + $" -p:AndroidSigningKeyStore={CodeSigningCertificate}"
-                                                + $" -p:AndroidSigningKeyAlias={CodeSigningCertificate.Replace(".keystore", "")}"
+                                                + $" -p:AndroidSigningKeyAlias={Path.GetFileNameWithoutExtension(CodeSigningCertificate)}"
                                                 + $" -p:AndroidSigningKeyPass={codeSigningPassword}"
                                                 + $" -p:AndroidSigningStorePass={codeSigningPassword}";
                     }
