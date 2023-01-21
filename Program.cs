@@ -241,6 +241,7 @@ namespace osu.Desktop.Deploy
                                          + " -f net6.0-android"
                                          + " -r android-arm64"
                                          + " -c Release"
+                                         + $" -o {stagingPath}"
                                          + $" -p:Version={version}"
                                          + $" -p:ApplicationVersion={version.Replace(".", "")}"
                                          + codeSigningArguments
@@ -248,7 +249,7 @@ namespace osu.Desktop.Deploy
                                          + " osu.Android/osu.Android.csproj");
 
                     // copy update information
-                    File.Move(Path.Combine(Environment.CurrentDirectory, "osu.Android/bin/Release/net6.0-android/android-arm64/publish/sh.ppy.osulazer-Signed.apk"), $"{releases_folder}/sh.ppy.osulazer.apk", true);
+                    File.Move(Path.Combine(stagingPath, "sh.ppy.osulazer-Signed.apk"), Path.Combine(releasesPath, "sh.ppy.osulazer.apk"), true);
                     break;
 
                 case RuntimeInfo.Platform.Linux:
