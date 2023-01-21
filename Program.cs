@@ -238,7 +238,9 @@ namespace osu.Desktop.Deploy
                     }
 
                     string[] versionParts = version.Split('.');
-                    string appVersion = string.Join(
+                    string appVersion = string.Join
+                    (
+                        separator: string.Empty,
                         versionParts[0].PadLeft(4, '0'),
                         versionParts[1].PadLeft(4, '0'),
                         versionParts[2].PadLeft(1, '0')
