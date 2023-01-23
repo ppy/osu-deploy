@@ -261,6 +261,21 @@ namespace osu.Desktop.Deploy
                     File.Move(Path.Combine(stagingPath, "sh.ppy.osulazer-Signed.apk"), Path.Combine(releasesPath, "sh.ppy.osulazer.apk"), true);
                     break;
 
+                case RuntimeInfo.Platform.iOS:
+                    runCommand("dotnet", "publish"
+                                         + " -f net6.0-ios"
+                                         + " -r ios-arm64"
+                                         + " -c Release"
+                                         + $" -o {stagingPath}"
+                                         + $" -p:Version={version}"
+                                         + $" -p:ApplicationDisplayVersion=1.0"
+                                         + " --self-contained"
+                                         + " osu.iOS/osu.iOS.csproj");
+
+                    // copy update information
+                    File.Move(Path.Combine(stagingPath, "osu.iOS.ipa"), Path.Combine(releasesPath, "osu.iOS.ipa"), true);
+                    break;
+
                 case RuntimeInfo.Platform.Linux:
                     const string app_dir = "osu!.AppDir";
 
