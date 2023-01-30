@@ -1,14 +1,27 @@
 #!/bin/sh
 
+DELETE_LOCAL_DESKTOPFILE=false
+DELETE_LOCAL_ICON=false
+DATA_DIR="$HOME/.local/share/"
+[ -n "$XDG_DATA_HOME" ] && DATA_DIR=$XDG_DATA_HOME
+
 if [ ! -z "$APPIMAGE" ] && [ ! -z "$APPDIR" ]; then
     MD5=$(echo -n "file://$APPIMAGE" | md5sum | cut -d' ' -f1)
     cp "$APPDIR/osu!.png" "$HOME/.cache/thumbnails/normal/$MD5.png"
     cp "$APPDIR/osu!.png" "$HOME/.cache/thumbnails/large/$MD5.png"
     xdg-icon-resource forceupdate
+    if [ ! -f "$DATA_DIR/applications/osu!.desktop" ]; then
+        ln -s "$APPDIR/osu!.desktop" "$DATA_DIR/applications/osu!.desktop" && DELETE_LOCAL_DESKTOPFILE=true
+    fi
+    if [ ! -f "$DATA_DIR/icons/osu!.png" ]; then
+        ln -s "$APPDIR/osu!.png" "$DATA_DIR/icons/osu!.png" && DELETE_LOCAL_ICON=true
+    fi
 fi
 
 HERE="$(dirname "$(readlink -f "${0}")")"
 export PATH="${HERE}"/usr/bin/:"${PATH}"
 export COMPlus_GCGen0MaxBudget=600000
-EXEC=$(grep -e '^Exec=.*' "${HERE}"/*.desktop | head -n 1 | rev | cut -d "=" -f 1 | cut -d " " -f 1 | rev)
-exec "${EXEC}" "$@"
+osu!
+
+[ $DELETE_LOCAL_DESKTOPFILE ] && rm "$DATA_DIR/applications/osu!.desktop"
+[ $DELETE_LOCAL_ICON ] && rm "$DATA_DIR/icons/osu!.png"
