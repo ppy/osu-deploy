@@ -181,10 +181,9 @@ namespace osu.Desktop.Deploy
                             codeSigningPassword = readLineMasked();
                         }
 
-                        string codeSigningCertPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), CodeSigningCertificate);
                         codeSigningCmd = string.IsNullOrEmpty(codeSigningPassword)
                             ? ""
-                            : $"--signParams=\"/td sha256 /fd sha256 /f {codeSigningCertPath} /p {codeSigningPassword} /tr http://timestamp.comodoca.com\"";
+                            : $"--signParams=\"/td sha256 /fd sha256 /f {CodeSigningCertificate} /p {codeSigningPassword} /tr http://timestamp.comodoca.com\"";
                     }
 
 
