@@ -79,6 +79,12 @@ namespace osu.Desktop.Deploy
 
         private static bool interactive;
 
+        /// <summary>
+        /// args[0]: code signing passphrase
+        /// args[1]: version
+        /// args[2]: platform
+        /// args[3]: arch
+        /// </summary>
         public static void Main(string[] args)
         {
             interactive = args.Length == 0;
@@ -197,9 +203,9 @@ namespace osu.Desktop.Deploy
 
                 case RuntimeInfo.Platform.macOS:
                     string targetArch = "";
-                    if (args.Length > 0)
+                    if (args.Length > 3)
                     {
-                        targetArch = args[0];
+                        targetArch = args[3];
                     }
                     else if (interactive)
                     {
