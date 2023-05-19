@@ -375,7 +375,7 @@ namespace osu.Desktop.Deploy
             {
                 // sign using apple codesign
                 runCommand("codesign",
-                    $"--deep --force --verify --entitlements {Path.Combine(Environment.CurrentDirectory, "osu.entitlements")} -o runtime --verbose --sign \"{CodeSigningCertificate}\" {stagingApp}");
+                    $"--deep --force --verify --keychain app-signing --entitlements {Path.Combine(Environment.CurrentDirectory, "osu.entitlements")} -o runtime --verbose --sign \"{CodeSigningCertificate}\" {stagingApp}");
 
                 // check codesign was successful
                 runCommand("spctl", $"--assess -vvvv {stagingApp}");
