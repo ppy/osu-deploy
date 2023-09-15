@@ -12,3 +12,4 @@ jobs:
       with:
         dotnet-version: '6.0'
     - run: dotnet build osu-deploy.sln
+    - run: sudo apt install flatpak-builder
