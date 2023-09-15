@@ -1,0 +1,31 @@
+app-id: ppy.osu.osu
+runtime: org.freedesktop.Platform
+runtime-version: '22.08'
+sdk: org.freedesktop.Sdk
+command: osu!
+modules:
+  - name: Osu!
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/lib64/osu!
+      - mkdir -p /app/bin
+      - cp -r * /app/lib64/osu!
+      - ln -s /app/lib64/osu!/osu! /app/bin/osu!
+    sources:
+      - type: dir
+        path: /usr/bin
+
+finish-args:
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+  - --socket=pulseaudio
+  - --socket=session-bus
+  - --socket=system-bus
+  - --socket=fallback-x11
+
+  - --device=dri
+  - --device=all
+
+  - --filesystem=~/.local/share/osu
+  - --filesystem=host
