@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
@@ -333,6 +333,21 @@ namespace osu.Desktop.Deploy
 
                     // copy update information
                     File.Move(Path.Combine(Environment.CurrentDirectory, "osu.AppImage.zsync"), $"{releases_folder}/osu.AppImage.zsync", true);
+                    
+                    // installs flatpak and flatpak-builder
+                    runCommand("sudo", $"apt update");
+                    runCommand("sudo", $"apt install flatpak-builder");
+
+                    // copies yaml for flatpak builder
+                    File.Move($"ppy.osu.osu.yml",$"{stagingTarget}/ppy.osu.osu.yml");
+                    
+                    // build repo and bundle the flatpak 
+                    runCommand("flatpak-builder", $"flatpak-builder --repo={stagingTarget}osu-flatpak-repo --user --install {stagingTarget}flatpak-dir ppy.osu.osu.yml --force-clean");
+                    runCommand("flatpak", $"-v build-bundle {stagingTarget}osu-flatpak-repo osu.flatpak ppy.osu.osu");
+
+                    // copy flatpak
+                    File.Move(Path.Combine(Environment.CurrentDirectory, "osu.flatpak"), $"{releases_folder}/osu.flatpak", true);
+
 
                     break;
             }
