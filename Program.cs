@@ -10,7 +10,6 @@ using System.Linq;
 using System.Management.Automation;
 using System.Net.Http;
 using System.Text.RegularExpressions;
-using System.Threading;
 using Newtonsoft.Json;
 using osu.Framework;
 using osu.Framework.Extensions;
@@ -388,12 +387,11 @@ namespace osu.Desktop.Deploy
 
             if (!string.IsNullOrEmpty(notarisationUsername))
             {
+                write("Submitting for notarisation...");
                 // upload for notarisation
                 runCommand("xcrun",
-                    $"altool --notarize-app --primary-bundle-id \"sh.ppy.osu.lazer\" --username \"{notarisationUsername}\" --password \"{ConfigurationManager.AppSettings["ApplePassword"]}\" --file \"{zippedApp}\"");
+                    $"notarytool submit --apple-id \"{notarisationUsername}\" --password \"{ConfigurationManager.AppSettings["ApplePassword"]}\" \"{zippedApp}\" --wait");
                 // TODO: make this actually wait properly
-                write("Waiting for notarisation to complete..");
-                Thread.Sleep(60000 * 5);
 
                 // staple notarisation result
                 runCommand("xcrun", $"stapler staple {stagingApp}");
