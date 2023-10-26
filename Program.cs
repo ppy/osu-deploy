@@ -272,7 +272,7 @@ namespace osu.Desktop.Deploy
                                          + " -c Release"
                                          + $" -o {stagingPath}"
                                          + $" -p:Version={version}"
-                                         + $" -p:ApplicationDisplayVersion=1.0"
+                                         + " -p:ApplicationDisplayVersion=1.0"
                                          + " --self-contained"
                                          + " osu.iOS/osu.iOS.csproj");
 
@@ -384,13 +384,15 @@ namespace osu.Desktop.Deploy
             runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingApp} \"{zippedApp}\"");
 
             string notarisationUsername = ConfigurationManager.AppSettings["AppleUsername"] ?? string.Empty;
+            string notarisationPassword = ConfigurationManager.AppSettings["ApplePassword"] ?? string.Empty;
+            string teamId = ConfigurationManager.AppSettings["AppleTeamId"] ?? string.Empty;
 
             if (!string.IsNullOrEmpty(notarisationUsername))
             {
                 write("Submitting for notarisation...");
                 // upload for notarisation
                 runCommand("xcrun",
-                    $"notarytool submit --apple-id \"{notarisationUsername}\" --password \"{ConfigurationManager.AppSettings["ApplePassword"]}\" \"{zippedApp}\" --wait");
+                    $"notarytool submit --apple-id \"{notarisationUsername}\" --password \"{notarisationPassword}\" --team-id \"{teamId}\" \"{zippedApp}\" --wait");
                 // TODO: make this actually wait properly
 
                 // staple notarisation result
