@@ -149,13 +149,13 @@ namespace osu.Desktop.Deploy
                     if (lastRelease != null)
                         getAssetsFromRelease(lastRelease);
 
-                    runCommand("dotnet", $"publish -f net6.0 -r win-x64 {ProjectName} -o {stagingPath} --configuration Release /p:Version={version}");
+                    runCommand("dotnet", $"publish -f net6.0 -r win-x64 {ProjectName} -o \"{stagingPath}\" --configuration Release /p:Version={version}");
 
                     // add icon to dotnet stub
                     runCommand("tools/rcedit-x64.exe", $"\"{stagingPath}\\osu!.exe\" --set-icon \"{iconPath}\"");
 
                     write("Creating NuGet deployment package...");
-                    runCommand(nugetPath, $"pack {NuSpecName} -Version {version} -Properties Configuration=Deploy -OutputDirectory {stagingPath} -BasePath {stagingPath}");
+                    runCommand(nugetPath, $"pack {NuSpecName} -Version {version} -Properties Configuration=Deploy -OutputDirectory \"{stagingPath}\" -BasePath \"{stagingPath}\"");
 
                     // prune once before checking for files so we can avoid erroring on files which aren't even needed for this build.
                     pruneReleases();
@@ -189,7 +189,7 @@ namespace osu.Desktop.Deploy
                     string nupkgFilename = $"{PackageName}.{version}.nupkg";
 
                     runCommand(squirrelPath,
-                        $"releasify --package={stagingPath}\\{nupkgFilename} --releaseDir={releasesPath} --icon={iconPath} --appIcon={iconPath} --splashImage={splashImagePath} {codeSigningCmd}");
+                        $"releasify --package=\"{stagingPath}\\{nupkgFilename}\" --releaseDir=\"{releasesPath}\" --icon=\"{iconPath}\" --appIcon=\"{iconPath}\" --splashImage=\"{splashImagePath}\" {codeSigningCmd}");
 
                     // prune again to clean up before upload.
                     pruneReleases();
