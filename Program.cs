@@ -686,6 +686,7 @@ namespace osu.Desktop.Deploy
         {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine($"FATAL ERROR: {message}");
+            Console.ResetColor();
 
             pauseIfInteractive();
             Environment.Exit(-1);
