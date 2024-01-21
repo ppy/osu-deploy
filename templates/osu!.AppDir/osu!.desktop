@@ -9,3 +9,4 @@ Exec=env COMPlus_GCGen0MaxBudget=600000 osu!
 Terminal=false
 Categories=Game;
 SingleMainWindow=true
+StartupWMClass=osu!
