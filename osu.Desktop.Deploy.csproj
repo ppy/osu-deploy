@@ -18,6 +18,9 @@
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="6.0.1" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="install.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="editbin.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

@@ -189,7 +189,7 @@ namespace osu.Desktop.Deploy
                     string nupkgFilename = $"{PackageName}.{version}.nupkg";
 
                     runCommand(squirrelPath,
-                        $"releasify --package=\"{stagingPath}\\{nupkgFilename}\" --releaseDir=\"{releasesPath}\" --icon=\"{iconPath}\" --appIcon=\"{iconPath}\" --splashImage=\"{splashImagePath}\" {codeSigningCmd}");
+                        $"releasify --package=\"{stagingPath}\\{nupkgFilename}\" --releaseDir=\"{releasesPath}\" --icon=\"install.ico\" --appIcon=\"{iconPath}\" --splashImage=\"{splashImagePath}\" {codeSigningCmd}");
 
                     // prune again to clean up before upload.
                     pruneReleases();
