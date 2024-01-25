@@ -187,9 +187,11 @@ namespace osu.Desktop.Deploy
 
 
                     string nupkgFilename = $"{PackageName}.{version}.nupkg";
+                    
+                    string installIcon = Path.Combine(Environment.CurrentDirectory, "install.ico");
 
                     runCommand(squirrelPath,
-                        $"releasify --package=\"{stagingPath}\\{nupkgFilename}\" --releaseDir=\"{releasesPath}\" --icon=\"install.ico\" --appIcon=\"{iconPath}\" --splashImage=\"{splashImagePath}\" {codeSigningCmd}");
+                        $"releasify --package=\"{stagingPath}\\{nupkgFilename}\" --releaseDir=\"{releasesPath}\" --icon=\"{installIcon}\" --appIcon=\"{iconPath}\" --splashImage=\"{splashImagePath}\" {codeSigningCmd}");
 
                     // prune again to clean up before upload.
                     pruneReleases();
