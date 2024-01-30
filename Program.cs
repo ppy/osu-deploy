@@ -154,6 +154,9 @@ namespace osu.Desktop.Deploy
                     // add icon to dotnet stub
                     runCommand("tools/rcedit-x64.exe", $"\"{stagingPath}\\osu!.exe\" --set-icon \"{iconPath}\"");
 
+                    // also add nuget package icon
+                    File.Copy(splashImagePath, Path.Combine(stagingPath, "icon.png"));
+
                     write("Creating NuGet deployment package...");
                     runCommand(nugetPath, $"pack {NuSpecName} -Version {version} -Properties Configuration=Deploy -OutputDirectory \"{stagingPath}\" -BasePath \"{stagingPath}\"");
 
