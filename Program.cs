@@ -7,7 +7,6 @@ using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Management.Automation;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
@@ -137,7 +136,6 @@ namespace osu.Desktop.Deploy
             stopwatch.Start();
 
             refreshDirectory(staging_folder);
-            updateAppveyorVersion(version);
 
             Debug.Assert(solutionPath != null);
 
@@ -715,26 +713,6 @@ namespace osu.Desktop.Deploy
                 Console.ReadLine();
             else
                 Console.WriteLine();
-        }
-
-        private static bool updateAppveyorVersion(string version)
-        {
-            try
-            {
-                using (PowerShell ps = PowerShell.Create())
-                {
-                    ps.AddScript($"Update-AppveyorBuild -Version \"{version}\"");
-                    ps.Invoke();
-                }
-
-                return true;
-            }
-            catch
-            {
-                // we don't have appveyor and don't care
-            }
-
-            return false;
         }
 
         private static void write(string message, ConsoleColor col = ConsoleColor.Gray)
