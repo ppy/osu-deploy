@@ -147,7 +147,7 @@ namespace osu.Desktop.Deploy
                     if (lastRelease != null)
                         getAssetsFromRelease(lastRelease);
 
-                    runCommand("dotnet", $"publish -f net6.0 -r win-x64 {ProjectName} -o \"{stagingPath}\" --configuration Release /p:Version={version}");
+                    runCommand("dotnet", $"publish -f net8.0 -r win-x64 {ProjectName} -o \"{stagingPath}\" --configuration Release /p:Version={version}");
 
                     // add icon to dotnet stub
                     runCommand("tools/rcedit-x64.exe", $"\"{stagingPath}\\osu!.exe\" --set-icon \"{iconPath}\"");
@@ -188,7 +188,7 @@ namespace osu.Desktop.Deploy
 
 
                     string nupkgFilename = $"{PackageName}.{version}.nupkg";
-                    
+
                     string installIcon = Path.Combine(Environment.CurrentDirectory, "install.ico");
 
                     runCommand(squirrelPath,
@@ -254,7 +254,7 @@ namespace osu.Desktop.Deploy
                     );
 
                     runCommand("dotnet", "publish"
-                                         + " -f net6.0-android"
+                                         + " -f net8.0-android"
                                          + " -r android-arm64"
                                          + " -c Release"
                                          + $" -o {stagingPath}"
@@ -270,7 +270,7 @@ namespace osu.Desktop.Deploy
 
                 case RuntimeInfo.Platform.iOS:
                     runCommand("dotnet", "publish"
-                                         + " -f net6.0-ios"
+                                         + " -f net8.0-ios"
                                          + " -r ios-arm64"
                                          + " -c Release"
                                          + $" -o {stagingPath}"
@@ -299,7 +299,7 @@ namespace osu.Desktop.Deploy
                     // mark AppRun as executable, as zip does not contains executable information
                     runCommand("chmod", $"+x {stagingTarget}/AppRun");
 
-                    runCommand("dotnet", $"publish -f net6.0 -r linux-x64 {ProjectName} -o {stagingTarget}/usr/bin/ --configuration Release /p:Version={version} --self-contained");
+                    runCommand("dotnet", $"publish -f net8.0 -r linux-x64 {ProjectName} -o {stagingTarget}/usr/bin/ --configuration Release /p:Version={version} --self-contained");
 
                     // mark output as executable
                     runCommand("chmod", $"+x {stagingTarget}/usr/bin/osu!");
