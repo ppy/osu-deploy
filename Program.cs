@@ -7,7 +7,6 @@ using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Management.Automation;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
@@ -137,7 +136,6 @@ namespace osu.Desktop.Deploy
             stopwatch.Start();
 
             refreshDirectory(staging_folder);
-            updateAppveyorVersion(version);
 
             Debug.Assert(solutionPath != null);
 
@@ -149,7 +147,7 @@ namespace osu.Desktop.Deploy
                     if (lastRelease != null)
                         getAssetsFromRelease(lastRelease);
 
-                    runCommand("dotnet", $"publish -f net6.0 -r win-x64 {ProjectName} -o \"{stagingPath}\" --configuration Release /p:Version={version}");
+                    runCommand("dotnet", $"publish -f net8.0 -r win-x64 {ProjectName} -o \"{stagingPath}\" --configuration Release /p:Version={version}");
 
                     // add icon to dotnet stub
                     runCommand("tools/rcedit-x64.exe", $"\"{stagingPath}\\osu!.exe\" --set-icon \"{iconPath}\"");
@@ -190,7 +188,7 @@ namespace osu.Desktop.Deploy
 
 
                     string nupkgFilename = $"{PackageName}.{version}.nupkg";
-                    
+
                     string installIcon = Path.Combine(Environment.CurrentDirectory, "install.ico");
 
                     runCommand(squirrelPath,
@@ -256,7 +254,7 @@ namespace osu.Desktop.Deploy
                     );
 
                     runCommand("dotnet", "publish"
-                                         + " -f net6.0-android"
+                                         + " -f net8.0-android"
                                          + " -r android-arm64"
                                          + " -c Release"
                                          + $" -o {stagingPath}"
@@ -272,7 +270,7 @@ namespace osu.Desktop.Deploy
 
                 case RuntimeInfo.Platform.iOS:
                     runCommand("dotnet", "publish"
-                                         + " -f net6.0-ios"
+                                         + " -f net8.0-ios"
                                          + " -r ios-arm64"
                                          + " -c Release"
                                          + $" -o {stagingPath}"
@@ -301,7 +299,7 @@ namespace osu.Desktop.Deploy
                     // mark AppRun as executable, as zip does not contains executable information
                     runCommand("chmod", $"+x {stagingTarget}/AppRun");
 
-                    runCommand("dotnet", $"publish -f net6.0 -r linux-x64 {ProjectName} -o {stagingTarget}/usr/bin/ --configuration Release /p:Version={version} --self-contained");
+                    runCommand("dotnet", $"publish -f net8.0 -r linux-x64 {ProjectName} -o {stagingTarget}/usr/bin/ --configuration Release /p:Version={version} --self-contained");
 
                     // mark output as executable
                     runCommand("chmod", $"+x {stagingTarget}/usr/bin/osu!");
@@ -372,7 +370,7 @@ namespace osu.Desktop.Deploy
             // without touching the app bundle itself, changes to file associations / icons / etc. will be cached at a macOS level and not updated.
             runCommand("touch", $"\"{Path.Combine(stagingPath, "osu!.app")}\" {stagingPath}", false);
 
-            runCommand("dotnet", $"publish -r osx-{arch} {ProjectName} --configuration Release -o {stagingPath}/osu!.app/Contents/MacOS /p:Version={version}");
+            runCommand("dotnet", $"publish -f net8.0 -r osx-{arch} {ProjectName} --configuration Release -o {stagingPath}/osu!.app/Contents/MacOS /p:Version={version}");
 
             string stagingApp = $"{stagingPath}/osu!.app";
             string archLabel = arch == "x64" ? "Intel" : "Apple Silicon";
@@ -715,26 +713,6 @@ namespace osu.Desktop.Deploy
                 Console.ReadLine();
             else
                 Console.WriteLine();
-        }
-
-        private static bool updateAppveyorVersion(string version)
-        {
-            try
-            {
-                using (PowerShell ps = PowerShell.Create())
-                {
-                    ps.AddScript($"Update-AppveyorBuild -Version \"{version}\"");
-                    ps.Invoke();
-                }
-
-                return true;
-            }
-            catch
-            {
-                // we don't have appveyor and don't care
-            }
-
-            return false;
         }
 
         private static void write(string message, ConsoleColor col = ConsoleColor.Gray)

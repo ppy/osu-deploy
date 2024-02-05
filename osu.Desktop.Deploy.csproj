@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup Label="Project">
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <OutputType>Exe</OutputType>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -8,7 +8,6 @@
   </PropertyGroup>
   <ItemGroup Label="Package References">
     <PackageReference Include="Clowd.Squirrel" Version="2.10.2" />
-    <PackageReference Include="Microsoft.PowerShell.SDK" Version="7.2.7" />
     <PackageReference Include="NuGet.CommandLine" Version="6.3.3">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>

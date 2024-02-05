@@ -10,5 +10,5 @@ jobs:
     - uses: actions/checkout@main
     - uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: '6.0'
+        dotnet-version: '8.0.x'
     - run: dotnet build osu-deploy.sln
