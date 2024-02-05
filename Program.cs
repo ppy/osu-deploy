@@ -370,7 +370,7 @@ namespace osu.Desktop.Deploy
             // without touching the app bundle itself, changes to file associations / icons / etc. will be cached at a macOS level and not updated.
             runCommand("touch", $"\"{Path.Combine(stagingPath, "osu!.app")}\" {stagingPath}", false);
 
-            runCommand("dotnet", $"publish -r osx-{arch} {ProjectName} --configuration Release -o {stagingPath}/osu!.app/Contents/MacOS /p:Version={version}");
+            runCommand("dotnet", $"publish -f net8.0 -r osx-{arch} {ProjectName} --configuration Release -o {stagingPath}/osu!.app/Contents/MacOS /p:Version={version}");
 
             string stagingApp = $"{stagingPath}/osu!.app";
             string archLabel = arch == "x64" ? "Intel" : "Apple Silicon";
