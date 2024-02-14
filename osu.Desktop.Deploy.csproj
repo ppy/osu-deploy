@@ -8,7 +8,7 @@
   </PropertyGroup>
   <ItemGroup Label="Package References">
     <PackageReference Include="Clowd.Squirrel" Version="2.10.2" />
-    <PackageReference Include="NuGet.CommandLine" Version="6.3.3">
+    <PackageReference Include="NuGet.CommandLine" Version="6.3.4">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
