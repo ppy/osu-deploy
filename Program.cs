@@ -678,12 +678,16 @@ namespace osu.Desktop.Deploy
         {
             var process = Process.Start(new ProcessStartInfo("dotnet", "list osu.Desktop.Deploy.csproj package")
             {
-                RedirectStandardOutput = true
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
             });
 
             Debug.Assert(process != null);
 
             process.WaitForExit();
+
+            if (process.ExitCode != 0)
+                throw new InvalidOperationException($"Could not locate tool {toolExecutable}!\nStandard error: {process.StandardError.ReadToEnd()}");
 
             string output = process.StandardOutput.ReadToEnd();
 
