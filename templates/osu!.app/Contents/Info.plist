@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>English</string>
+	<key>CFBundleExecutable</key>
+	<string>osu!</string>
+	<key>CFBundleName</key>
+	<string>osu!</string>
+	<key>CFBundleGetInfoString</key>
+	<string>osu-lazer</string>
+	<key>CFBundleIconFile</key>
+	<string>osu.icns</string>
+	<key>CFBundleIdentifier</key>
+	<string>sh.ppy.osu.lazer</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>0.0</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>lazer</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>0.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>LSHasLocalizedDisplayName</key>
+	<true/>
+	<key>LSMinimumSystemVersion</key>
+	<string>10.7.0</string>
+	<key>NSPrincipalClass</key>
+	<string>CStubApplication</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Supported protocols</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>osu</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>osu! beatmap archive</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>osz</string>
+			</array>
+			<key>CFBundleTypeMIMETypes</key>
+			<array>
+				<string>application/x-osu-beatmap-archive</string>
+			</array>
+			<key>LSTypeIsPackage</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>osu! skin archive</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>osk</string>
+			</array>
+			<key>CFBundleTypeMIMETypes</key>
+			<array>
+				<string>application/x-osu-skin-archive</string>
+			</array>
+			<key>LSTypeIsPackage</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>osu! replay</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>osr</string>
+			</array>
+			<key>CFBundleTypeMIMETypes</key>
+			<array>
+				<string>application/x-osu-replay</string>
+			</array>
+			<key>LSTypeIsPackage</key>
+			<false/>
+		</dict>
+	</array>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.music-games</string>
+</dict>
+</plist>

@@ -364,33 +364,38 @@ namespace osu.Desktop.Deploy
 
         private static void buildForMac(string arch, string version)
         {
-            // unzip the template app, with all structure existing except for dotnet published content.
-            runCommand("unzip", $"\"osu!.app-template.zip\" -d {stagingPath}", false);
+            const string app_dir = "osu!.app";
+
+            string stagingTarget = Path.Combine(stagingPath, app_dir);
+
+            if (Directory.Exists(stagingTarget))
+                Directory.Delete(stagingTarget, true);
+
+            runCommand("cp", $"-r \"{Path.Combine(templatesPath, app_dir)}\" \"{stagingTarget}\"");
 
             // without touching the app bundle itself, changes to file associations / icons / etc. will be cached at a macOS level and not updated.
-            runCommand("touch", $"\"{Path.Combine(stagingPath, "osu!.app")}\" {stagingPath}", false);
+            runCommand("touch", $"\"{stagingTarget}\" {stagingPath}", false);
 
-            runCommand("dotnet", $"publish -f net8.0 -r osx-{arch} {ProjectName} --configuration Release -o {stagingPath}/osu!.app/Contents/MacOS /p:Version={version} --self-contained");
+            runCommand("dotnet", $"publish -f net8.0 -r osx-{arch} {ProjectName} --configuration Release -o {stagingTarget}/Contents/MacOS /p:Version={version} --self-contained");
 
-            string stagingApp = $"{stagingPath}/osu!.app";
             string archLabel = arch == "x64" ? "Intel" : "Apple Silicon";
-            string zippedApp = $"{releasesPath}/osu!.app ({archLabel}).zip";
+            string zippedApp = $"{releasesPath}/{app_dir} ({archLabel}).zip";
 
             // correct permissions post-build. dotnet outputs 644 by default; we want 755.
-            runCommand("chmod", $"-R 755 {stagingApp}");
+            runCommand("chmod", $"-R 755 {stagingTarget}");
 
             if (!string.IsNullOrEmpty(CodeSigningCertificate))
             {
                 // sign using apple codesign
                 runCommand("codesign",
-                    $"--deep --force --verify --keychain app-signing --entitlements {Path.Combine(Environment.CurrentDirectory, "osu.entitlements")} -o runtime --verbose --sign \"{CodeSigningCertificate}\" {stagingApp}");
+                    $"--deep --force --verify --keychain app-signing --entitlements {Path.Combine(Environment.CurrentDirectory, "osu.entitlements")} -o runtime --verbose --sign \"{CodeSigningCertificate}\" {stagingTarget}");
 
                 // check codesign was successful
-                runCommand("spctl", $"--assess -vvvv {stagingApp}");
+                runCommand("spctl", $"--assess -vvvv {stagingTarget}");
             }
 
             // package for distribution
-            runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingApp} \"{zippedApp}\"");
+            runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingTarget} \"{zippedApp}\"");
 
             string notarisationUsername = ConfigurationManager.AppSettings["AppleUsername"] ?? string.Empty;
             string notarisationPassword = ConfigurationManager.AppSettings["ApplePassword"] ?? string.Empty;
@@ -405,13 +410,13 @@ namespace osu.Desktop.Deploy
                 // TODO: make this actually wait properly
 
                 // staple notarisation result
-                runCommand("xcrun", $"stapler staple {stagingApp}");
+                runCommand("xcrun", $"stapler staple {stagingTarget}");
             }
 
             File.Delete(zippedApp);
 
             // repackage for distribution
-            runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingApp} \"{zippedApp}\"");
+            runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingTarget} \"{zippedApp}\"");
         }
 
         /// <summary>
