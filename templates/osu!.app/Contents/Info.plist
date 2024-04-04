@@ -63,6 +63,22 @@
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
+			<string>osu! beatmap archive</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>olz</string>
+			</array>
+			<key>CFBundleTypeMIMETypes</key>
+			<array>
+				<string>application/x-osu-beatmap-archive</string>
+			</array>
+			<key>LSTypeIsPackage</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
 			<string>osu! skin archive</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
