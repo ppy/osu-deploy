@@ -53,6 +53,7 @@
 			<key>CFBundleTypeExtensions</key>
 			<array>
 				<string>osz</string>
+				<string>olz</string>
 			</array>
 			<key>CFBundleTypeMIMETypes</key>
 			<array>
