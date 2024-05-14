@@ -141,69 +141,30 @@ namespace osu.Desktop.Deploy
 
             write("Running build process...");
 
+            string targetArch = "";
             switch (targetPlatform)
             {
                 case RuntimeInfo.Platform.Windows:
+                    if (args.Length > 3)
+                    {
+                        targetArch = args[3];
+                    }
+                    else if (interactive)
+                    {
+                        Console.Write("Build for which architecture? [x64/x86/arm64]: ");
+                        targetArch = Console.ReadLine() ?? string.Empty;
+                    }
+
+                    if (targetArch != "x64" && targetArch != "x86" && targetArch != "arm64")
+                        error($"Invalid Architecture: {targetArch}");
+                    
                     if (lastRelease != null)
                         getAssetsFromRelease(lastRelease);
 
-                    runCommand("dotnet", $"publish -f net8.0 -r win-x64 {ProjectName} -o \"{stagingPath}\" --configuration Release /p:Version={version} --self-contained");
-
-                    // add icon to dotnet stub
-                    runCommand("tools/rcedit-x64.exe", $"\"{stagingPath}\\osu!.exe\" --set-icon \"{iconPath}\"");
-
-                    // also add nuget package icon
-                    File.Copy(splashImagePath, Path.Combine(stagingPath, "icon.png"));
-
-                    write("Creating NuGet deployment package...");
-                    runCommand(nugetPath, $"pack {NuSpecName} -Version {version} -Properties Configuration=Deploy -OutputDirectory \"{stagingPath}\" -BasePath \"{stagingPath}\"");
-
-                    // prune once before checking for files so we can avoid erroring on files which aren't even needed for this build.
-                    pruneReleases();
-
-                    checkReleaseFiles();
-
-                    write("Running squirrel build...");
-
-                    string codeSigningCmd = string.Empty;
-
-                    if (!string.IsNullOrEmpty(CodeSigningCertificate))
-                    {
-                        string? codeSigningPassword;
-
-                        if (args.Length > 0)
-                        {
-                            codeSigningPassword = args[0];
-                        }
-                        else
-                        {
-                            Console.Write("Enter code signing password: ");
-                            codeSigningPassword = readLineMasked();
-                        }
-
-                        codeSigningCmd = string.IsNullOrEmpty(codeSigningPassword)
-                            ? ""
-                            : $"--signParams=\"/td sha256 /fd sha256 /f {CodeSigningCertificate} /p {codeSigningPassword} /tr http://timestamp.comodoca.com\"";
-                    }
-
-
-                    string nupkgFilename = $"{PackageName}.{version}.nupkg";
-
-                    string installIcon = Path.Combine(Environment.CurrentDirectory, "install.ico");
-
-                    runCommand(squirrelPath,
-                        $"releasify --package=\"{stagingPath}\\{nupkgFilename}\" --releaseDir=\"{releasesPath}\" --icon=\"{installIcon}\" --appIcon=\"{iconPath}\" --splashImage=\"{splashImagePath}\" {codeSigningCmd}");
-
-                    // prune again to clean up before upload.
-                    pruneReleases();
-
-                    // rename setup to install.
-                    File.Copy(Path.Combine(releases_folder, "osulazerSetup.exe"), Path.Combine(releases_folder, "install.exe"), true);
-                    File.Delete(Path.Combine(releases_folder, "osulazerSetup.exe"));
+                    buildForWin(targetArch, version);
                     break;
 
                 case RuntimeInfo.Platform.macOS:
-                    string targetArch = "";
                     if (args.Length > 3)
                     {
                         targetArch = args[3];
@@ -360,6 +321,73 @@ namespace osu.Desktop.Deploy
             Console.WriteLine("  Do not distribute builds of this project publicly that make use of these.");
             Console.ResetColor();
             Console.WriteLine();
+        }
+
+        private static void buildForWin(string arch, string version)
+        {
+            if (Directory.Exists(stagingPath))
+                Directory.Delete(stagingPath, true);
+
+            runCommand("dotnet", $"publish -f net8.0 -r win-{arch} {ProjectName} -o \"{stagingPath}\" --configuration Release /p:Version={version} --self-contained");
+
+            // add icon to dotnet stub
+            runCommand("tools/rcedit-x64.exe", $"\"{stagingPath}\\osu!.exe\" --set-icon \"{iconPath}\"");
+
+            // also add nuget package icon
+            File.Copy(splashImagePath, Path.Combine(stagingPath, "icon.png"));
+
+            write("Creating NuGet deployment package...");
+            runCommand(nugetPath, $"pack {NuSpecName} -Version {version} -Properties Configuration=Deploy -OutputDirectory \"{stagingPath}\" -BasePath \"{stagingPath}\"");
+
+            // prune once before checking for files so we can avoid erroring on files which aren't even needed for this build.
+            pruneReleases();
+
+            checkReleaseFiles();
+
+            write("Running squirrel build...");
+
+            string codeSigningCmd = string.Empty;
+
+            if (!string.IsNullOrEmpty(CodeSigningCertificate))
+            {
+                string? codeSigningPassword;
+
+                if (interactive)
+                {
+                    Console.Write("Enter code signing password: ");
+                    codeSigningPassword = readLineMasked();
+                }
+                else
+                {
+                    codeSigningPassword = null;
+                }
+
+                codeSigningCmd = string.IsNullOrEmpty(codeSigningPassword)
+                    ? ""
+                    : $"--signParams=\"/td sha256 /fd sha256 /f {CodeSigningCertificate} /p {codeSigningPassword} /tr http://timestamp.comodoca.com\"";
+            }
+
+            string nupkgFilename = $"{PackageName}.{version}.nupkg";
+            string nupkgFilenameWithArch = $"{PackageName}-{arch}.{version}.nupkg";
+            File.Move(Path.Combine(stagingPath, nupkgFilename), Path.Combine(stagingPath, nupkgFilenameWithArch));
+
+            string installIcon = Path.Combine(Environment.CurrentDirectory, "install.ico");
+            
+            runCommand(
+                squirrelPath,
+                "releasify "
+                + $"--package=\"{stagingPath}\\{nupkgFilenameWithArch}\" "
+                + $"--releaseDir=\"{releasesPath}\" "
+                + $"--icon=\"{installIcon}\" "
+                + $"--appIcon=\"{iconPath}\" "
+                + $"--splashImage=\"{splashImagePath}\" {codeSigningCmd}");
+
+            // prune again to clean up before upload.
+            pruneReleases();
+
+            // rename setup to install.
+            File.Copy(Path.Combine(releases_folder, "osulazerSetup.exe"), Path.Combine(releases_folder, $"install-{arch}.exe"), true);
+            File.Delete(Path.Combine(releases_folder, "osulazerSetup.exe"));
         }
 
         private static void buildForMac(string arch, string version)
