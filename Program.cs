@@ -141,69 +141,30 @@ namespace osu.Desktop.Deploy
 
             write("Running build process...");
 
+            string targetArch = "";
             switch (targetPlatform)
             {
                 case RuntimeInfo.Platform.Windows:
+                    if (args.Length > 3)
+                    {
+                        targetArch = args[3];
+                    }
+                    else if (interactive)
+                    {
+                        Console.Write("Build for which architecture? [x64/arm64]: ");
+                        targetArch = Console.ReadLine() ?? string.Empty;
+                    }
+
+                    if (targetArch != "x64" && targetArch != "arm64")
+                        error($"Invalid Architecture: {targetArch}");
+                    
                     if (lastRelease != null)
                         getAssetsFromRelease(lastRelease);
 
-                    runCommand("dotnet", $"publish -f net8.0 -r win-x64 {ProjectName} -o \"{stagingPath}\" --configuration Release /p:Version={version} --self-contained");
-
-                    // add icon to dotnet stub
-                    runCommand("tools/rcedit-x64.exe", $"\"{stagingPath}\\osu!.exe\" --set-icon \"{iconPath}\"");
-
-                    // also add nuget package icon
-                    File.Copy(splashImagePath, Path.Combine(stagingPath, "icon.png"));
-
-                    write("Creating NuGet deployment package...");
-                    runCommand(nugetPath, $"pack {NuSpecName} -Version {version} -Properties Configuration=Deploy -OutputDirectory \"{stagingPath}\" -BasePath \"{stagingPath}\"");
-
-                    // prune once before checking for files so we can avoid erroring on files which aren't even needed for this build.
-                    pruneReleases();
-
-                    checkReleaseFiles();
-
-                    write("Running squirrel build...");
-
-                    string codeSigningCmd = string.Empty;
-
-                    if (!string.IsNullOrEmpty(CodeSigningCertificate))
-                    {
-                        string? codeSigningPassword;
-
-                        if (args.Length > 0)
-                        {
-                            codeSigningPassword = args[0];
-                        }
-                        else
-                        {
-                            Console.Write("Enter code signing password: ");
-                            codeSigningPassword = readLineMasked();
-                        }
-
-                        codeSigningCmd = string.IsNullOrEmpty(codeSigningPassword)
-                            ? ""
-                            : $"--signParams=\"/td sha256 /fd sha256 /f {CodeSigningCertificate} /p {codeSigningPassword} /tr http://timestamp.comodoca.com\"";
-                    }
-
-
-                    string nupkgFilename = $"{PackageName}.{version}.nupkg";
-
-                    string installIcon = Path.Combine(Environment.CurrentDirectory, "install.ico");
-
-                    runCommand(squirrelPath,
-                        $"releasify --package=\"{stagingPath}\\{nupkgFilename}\" --releaseDir=\"{releasesPath}\" --icon=\"{installIcon}\" --appIcon=\"{iconPath}\" --splashImage=\"{splashImagePath}\" {codeSigningCmd}");
-
-                    // prune again to clean up before upload.
-                    pruneReleases();
-
-                    // rename setup to install.
-                    File.Copy(Path.Combine(releases_folder, "osulazerSetup.exe"), Path.Combine(releases_folder, "install.exe"), true);
-                    File.Delete(Path.Combine(releases_folder, "osulazerSetup.exe"));
+                    buildForWin(targetArch, version);
                     break;
 
                 case RuntimeInfo.Platform.macOS:
-                    string targetArch = "";
                     if (args.Length > 3)
                     {
                         targetArch = args[3];
@@ -284,64 +245,20 @@ namespace osu.Desktop.Deploy
                     break;
 
                 case RuntimeInfo.Platform.Linux:
-                    const string app_dir = "osu!.AppDir";
-
-                    string stagingTarget = Path.Combine(stagingPath, app_dir);
-
-                    if (Directory.Exists(stagingTarget))
-                        Directory.Delete(stagingTarget, true);
-
-                    Directory.CreateDirectory(stagingTarget);
-
-                    foreach (var file in Directory.GetFiles(Path.Combine(templatesPath, app_dir)))
-                        new FileInfo(file).CopyTo(Path.Combine(stagingTarget, Path.GetFileName(file)));
-
-                    // mark AppRun as executable, as zip does not contains executable information
-                    runCommand("chmod", $"+x {stagingTarget}/AppRun");
-
-                    runCommand("dotnet", $"publish -f net8.0 -r linux-x64 {ProjectName} -o {stagingTarget}/usr/bin/ --configuration Release /p:Version={version} --self-contained");
-
-                    // mark output as executable
-                    runCommand("chmod", $"+x {stagingTarget}/usr/bin/osu!");
-
-                    // copy png icon (for desktop file)
-                    File.Copy(Path.Combine(solutionPath, "assets/lazer.png"), $"{stagingTarget}/osu!.png");
-
-                    // download appimagetool
-                    string appImageToolPath = $"{stagingPath}/appimagetool.AppImage";
-
-                    using (var client = new HttpClient())
+                    if (args.Length > 3)
                     {
-                        using (var stream = client.GetStreamAsync("https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage").GetResultSafely())
-                        using (var fileStream = new FileStream(appImageToolPath, FileMode.CreateNew))
-                        {
-                            stream.CopyToAsync(fileStream).WaitSafely();
-                        }
+                        targetArch = args[3];
                     }
+                    else if (interactive)
+                    {
+                        Console.Write("Build for which architecture? [x64/arm64]: ");
+                        targetArch = Console.ReadLine() ?? string.Empty;
+                    }
+                    
+                    if (targetArch != "x64" && targetArch != "arm64")
+                        error($"Invalid Architecture: {targetArch}");
 
-                    // mark appimagetool as executable
-                    runCommand("chmod", $"a+x {appImageToolPath}");
-
-                    // create AppImage itself
-                    // gh-releases-zsync stands here for GitHub Releases ZSync, that is a way to check for updates
-                    // ppy|osu|latest stands for https://github.com/ppy/osu and get the latest release
-                    // osu.AppImage.zsync is AppImage update information file, that is generated by the tool
-                    // more information there https://docs.appimage.org/packaging-guide/optional/updates.html?highlight=update#using-appimagetool
-                    // also sets a VERSION environment variable that creates a X-AppImage-Version key in the .desktop file inside the AppImage
-                    // for information about this key: https://docs.appimage.org/reference/desktop-integration.html#custom-keys-introduced-for-appimage-purposes
-                    runCommand(appImageToolPath,
-                        $"\"{stagingTarget}\" -u \"gh-releases-zsync|ppy|osu|latest|osu.AppImage.zsync\" \"{Path.Combine(Environment.CurrentDirectory, "releases")}/osu.AppImage\" --sign", false,
-                        new Dictionary<string, string>
-                        {
-                            ["VERSION"] = version
-                        });
-
-                    // mark finally the osu! AppImage as executable -> Don't compress it.
-                    runCommand("chmod", $"+x \"{Path.Combine(Environment.CurrentDirectory, "releases")}/osu.AppImage\"");
-
-                    // copy update information
-                    File.Move(Path.Combine(Environment.CurrentDirectory, "osu.AppImage.zsync"), $"{releases_folder}/osu.AppImage.zsync", true);
-
+                    buildForLinux(targetArch, version);
                     break;
             }
 
@@ -360,6 +277,73 @@ namespace osu.Desktop.Deploy
             Console.WriteLine("  Do not distribute builds of this project publicly that make use of these.");
             Console.ResetColor();
             Console.WriteLine();
+        }
+
+        private static void buildForWin(string arch, string version)
+        {
+            if (Directory.Exists(stagingPath))
+                Directory.Delete(stagingPath, true);
+
+            runCommand("dotnet", $"publish -f net8.0 -r win-{arch} {ProjectName} -o \"{stagingPath}\" --configuration Release /p:Version={version} --self-contained");
+
+            // add icon to dotnet stub
+            runCommand("tools/rcedit-x64.exe", $"\"{stagingPath}\\osu!.exe\" --set-icon \"{iconPath}\"");
+
+            // also add nuget package icon
+            File.Copy(splashImagePath, Path.Combine(stagingPath, "icon.png"));
+
+            write("Creating NuGet deployment package...");
+            runCommand(nugetPath, $"pack {NuSpecName} -Version {version} -Properties Configuration=Deploy -OutputDirectory \"{stagingPath}\" -BasePath \"{stagingPath}\"");
+
+            // prune once before checking for files so we can avoid erroring on files which aren't even needed for this build.
+            pruneReleases();
+
+            checkReleaseFiles();
+
+            write("Running squirrel build...");
+
+            string codeSigningCmd = string.Empty;
+
+            if (!string.IsNullOrEmpty(CodeSigningCertificate))
+            {
+                string? codeSigningPassword;
+
+                if (interactive)
+                {
+                    Console.Write("Enter code signing password: ");
+                    codeSigningPassword = readLineMasked();
+                }
+                else
+                {
+                    codeSigningPassword = null;
+                }
+
+                codeSigningCmd = string.IsNullOrEmpty(codeSigningPassword)
+                    ? ""
+                    : $"--signParams=\"/td sha256 /fd sha256 /f {CodeSigningCertificate} /p {codeSigningPassword} /tr http://timestamp.comodoca.com\"";
+            }
+
+            string nupkgFilename = $"{PackageName}.{version}.nupkg";
+            string nupkgFilenameWithArch = $"{PackageName}-{arch}.{version}.nupkg";
+            File.Move(Path.Combine(stagingPath, nupkgFilename), Path.Combine(stagingPath, nupkgFilenameWithArch));
+
+            string installIcon = Path.Combine(Environment.CurrentDirectory, "install.ico");
+            
+            runCommand(
+                squirrelPath,
+                "releasify "
+                + $"--package=\"{stagingPath}\\{nupkgFilenameWithArch}\" "
+                + $"--releaseDir=\"{releasesPath}\" "
+                + $"--icon=\"{installIcon}\" "
+                + $"--appIcon=\"{iconPath}\" "
+                + $"--splashImage=\"{splashImagePath}\" {codeSigningCmd}");
+
+            // prune again to clean up before upload.
+            pruneReleases();
+
+            // rename setup to install.
+            File.Copy(Path.Combine(releases_folder, "osulazerSetup.exe"), Path.Combine(releases_folder, $"install-{arch}.exe"), true);
+            File.Delete(Path.Combine(releases_folder, "osulazerSetup.exe"));
         }
 
         private static void buildForMac(string arch, string version)
@@ -417,6 +401,76 @@ namespace osu.Desktop.Deploy
 
             // repackage for distribution
             runCommand("ditto", $"-ck --rsrc --keepParent --sequesterRsrc {stagingTarget} \"{zippedApp}\"");
+        }
+
+        private static void buildForLinux(string arch, string version)
+        {
+            const string app_dir = "osu!.AppDir";
+
+            string stagingTarget = Path.Combine(stagingPath, app_dir);
+
+            if (Directory.Exists(stagingTarget))
+                Directory.Delete(stagingTarget, true);
+
+            Directory.CreateDirectory(stagingTarget);
+            foreach (var file in Directory.GetFiles(Path.Combine(templatesPath, app_dir)))
+                new FileInfo(file).CopyTo(Path.Combine(stagingTarget, Path.GetFileName(file)));
+
+            // mark AppRun as executable, as zip does not contains executable information
+            runCommand("chmod", $"+x {stagingTarget}/AppRun");
+
+            runCommand("dotnet", $"publish -f net8.0 -r linux-{arch} {ProjectName} -o {stagingTarget}/usr/bin/ --configuration Release /p:Version={version} --self-contained");
+
+            // mark output as executable
+            runCommand("chmod", $"+x {stagingTarget}/usr/bin/osu!");
+
+            // copy png icon (for desktop file)
+            File.Copy(Path.Combine(solutionPath, "assets/lazer.png"), $"{stagingTarget}/osu!.png");
+
+            // download appimagetool
+            string appImageToolPath = $"{stagingPath}/appimagetool.AppImage";
+
+            using (var client = new HttpClient())
+            {
+                var runtimeArch = "";
+                switch (System.Runtime.InteropServices.RuntimeInformation.OSArchitecture) {
+                    case System.Runtime.InteropServices.Architecture.Arm64:
+                        runtimeArch = "aarch64";
+                        break;
+                    case System.Runtime.InteropServices.Architecture.X64:
+                        runtimeArch = "x86_64";
+                        break;
+                }
+                
+                using (var stream = client.GetStreamAsync($"https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-{runtimeArch}.AppImage").GetResultSafely())
+                using (var fileStream = new FileStream(appImageToolPath, FileMode.CreateNew))
+                {
+                    stream.CopyToAsync(fileStream).WaitSafely();
+                }
+            }
+
+            // mark appimagetool as executable
+            runCommand("chmod", $"a+x {appImageToolPath}");
+
+            // create AppImage itself
+            // gh-releases-zsync stands here for GitHub Releases ZSync, that is a way to check for updates
+            // ppy|osu|latest stands for https://github.com/ppy/osu and get the latest release
+            // osu.AppImage.zsync is AppImage update information file, that is generated by the tool
+            // more information there https://docs.appimage.org/packaging-guide/optional/updates.html?highlight=update#using-appimagetool
+            // also sets a VERSION environment variable that creates a X-AppImage-Version key in the .desktop file inside the AppImage
+            // for information about this key: https://docs.appimage.org/reference/desktop-integration.html#custom-keys-introduced-for-appimage-purposes
+            runCommand(appImageToolPath,
+                $"\"{stagingTarget}\" -u \"gh-releases-zsync|ppy|osu|latest|osu.AppImage.zsync\" \"{Path.Combine(Environment.CurrentDirectory, "releases")}/osu.AppImage\" --sign", false,
+                new Dictionary<string, string>
+                {
+                    ["VERSION"] = version
+                });
+
+            // mark finally the osu! AppImage as executable -> Don't compress it.
+            runCommand("chmod", $"+x \"{Path.Combine(Environment.CurrentDirectory, "releases")}/osu.AppImage\"");
+
+            // copy update information
+            File.Move(Path.Combine(Environment.CurrentDirectory, "osu.AppImage.zsync"), $"{releases_folder}/osu.AppImage.zsync", true);
         }
 
         /// <summary>
