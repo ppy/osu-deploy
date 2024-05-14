@@ -151,11 +151,11 @@ namespace osu.Desktop.Deploy
                     }
                     else if (interactive)
                     {
-                        Console.Write("Build for which architecture? [x64/x86/arm64]: ");
+                        Console.Write("Build for which architecture? [x64/arm64]: ");
                         targetArch = Console.ReadLine() ?? string.Empty;
                     }
 
-                    if (targetArch != "x64" && targetArch != "x86" && targetArch != "arm64")
+                    if (targetArch != "x64" && targetArch != "arm64")
                         error($"Invalid Architecture: {targetArch}");
                     
                     if (lastRelease != null)
@@ -251,11 +251,11 @@ namespace osu.Desktop.Deploy
                     }
                     else if (interactive)
                     {
-                        Console.Write("Build for which architecture? [x64/x86/arm64/arm]: ");
+                        Console.Write("Build for which architecture? [x64/arm64]: ");
                         targetArch = Console.ReadLine() ?? string.Empty;
                     }
                     
-                    if (targetArch != "x64" && targetArch != "x86" && targetArch != "arm64" && targetArch != "arm")
+                    if (targetArch != "x64" && targetArch != "arm64")
                         error($"Invalid Architecture: {targetArch}");
 
                     buildForLinux(targetArch, version);
@@ -434,17 +434,11 @@ namespace osu.Desktop.Deploy
             {
                 var runtimeArch = "";
                 switch (System.Runtime.InteropServices.RuntimeInformation.OSArchitecture) {
-                    case System.Runtime.InteropServices.Architecture.Arm:
-                        runtimeArch = "armhf";
-                        break;
                     case System.Runtime.InteropServices.Architecture.Arm64:
                         runtimeArch = "aarch64";
                         break;
                     case System.Runtime.InteropServices.Architecture.X64:
                         runtimeArch = "x86_64";
-                        break;
-                    case System.Runtime.InteropServices.Architecture.X86:
-                        runtimeArch = "i686";
                         break;
                 }
                 
