@@ -21,7 +21,7 @@ namespace osu.Desktop.Deploy
         private static string packages => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
 
         private static string nugetPath => getToolPath("NuGet.CommandLine", "NuGet.exe");
-        private static string squirrelPath => getToolPath("Clowd.Squirrel", "Squirrel.exe");
+        private static string squirrelPath => getToolPath("Velopack", "vpk.exe");
 
         private const string staging_folder = "staging";
         private const string templates_folder = "templates";
@@ -300,6 +300,8 @@ namespace osu.Desktop.Deploy
                     runCommand("chmod", $"+x {stagingTarget}/AppRun");
 
                     runCommand("dotnet", $"publish -f net8.0 -r linux-x64 {ProjectName} -o {stagingTarget}/usr/bin/ --configuration Release /p:Version={version} --self-contained");
+
+                    runCommand("vpk", $"pack -u osulazer -v {version} -o {releasesPath} -p {stagingTarget}/usr/bin/ -e osu!");
 
                     // mark output as executable
                     runCommand("chmod", $"+x {stagingTarget}/usr/bin/osu!");
