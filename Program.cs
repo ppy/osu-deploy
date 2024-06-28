@@ -18,11 +18,6 @@ namespace osu.Desktop.Deploy
 {
     internal static class Program
     {
-        private static string packages => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
-
-        private static string nugetPath => getToolPath("NuGet.CommandLine", "NuGet.exe");
-        private static string squirrelPath => getToolPath("Velopack", "vpk.exe");
-
         private const string staging_folder = "staging";
         private const string templates_folder = "templates";
         private const string releases_folder = "releases";
@@ -38,19 +33,25 @@ namespace osu.Desktop.Deploy
         public static string? GitHubRepoName = ConfigurationManager.AppSettings["GitHubRepoName"];
         public static string? SolutionName = ConfigurationManager.AppSettings["SolutionName"];
         public static string? ProjectName = ConfigurationManager.AppSettings["ProjectName"];
-        public static string? NuSpecName = ConfigurationManager.AppSettings["NuSpecName"];
-        public static bool IncrementVersion = bool.Parse(ConfigurationManager.AppSettings["IncrementVersion"] ?? "true");
         public static string? PackageName = ConfigurationManager.AppSettings["PackageName"];
         public static string? IconName = ConfigurationManager.AppSettings["IconName"];
-        public static string? CodeSigningCertificate = ConfigurationManager.AppSettings["CodeSigningCertificate"];
+
+        public static string? AndroidCodeSigningCertPath = ConfigurationManager.AppSettings["AndroidCodeSigningCertPath"];
+        public static string? WindowsCodeSigningCertPath = ConfigurationManager.AppSettings["WindowsCodeSigningCertPath"];
+        public static string? AppleCodeSignCertName = ConfigurationManager.AppSettings["AppleCodeSignCertName"];
+        public static string? AppleInstallSignCertName = ConfigurationManager.AppSettings["AppleInstallSignCertName"];
+        public static string? AppleNotaryProfileName = ConfigurationManager.AppSettings["AppleNotaryProfileName"];
 
         public static string GitHubApiEndpoint => $"https://api.github.com/repos/{GitHubUsername}/{GitHubRepoName}/releases";
+        public static string GithubRepoUrl => $"https://github.com/{GitHubUsername}/{GitHubRepoName}";
 
         private static string? solutionPath;
 
         private static string stagingPath => Path.Combine(Environment.CurrentDirectory, staging_folder);
         private static string templatesPath => Path.Combine(Environment.CurrentDirectory, templates_folder);
         private static string releasesPath => Path.Combine(Environment.CurrentDirectory, releases_folder);
+
+        private static string vpkPath = "vpk";
 
         private static string iconPath
         {
@@ -125,8 +126,7 @@ namespace osu.Desktop.Deploy
                 Enum.TryParse(args[2], true, out targetPlatform);
 
             Console.ResetColor();
-            Console.WriteLine($"Increment Version:     {IncrementVersion}");
-            Console.WriteLine($"Signing Certificate:   {CodeSigningCertificate}");
+            Console.WriteLine($"Signing Certificate:   {WindowsCodeSigningCertPath}");
             Console.WriteLine($"Upload to GitHub:      {GitHubUpload}");
             Console.WriteLine();
             Console.Write($"Ready to deploy version {version} on platform {targetPlatform}!");
@@ -140,6 +140,11 @@ namespace osu.Desktop.Deploy
             Debug.Assert(solutionPath != null);
 
             write("Running build process...");
+
+            if (targetPlatform == RuntimeInfo.Platform.Windows || targetPlatform == RuntimeInfo.Platform.Linux || targetPlatform == RuntimeInfo.Platform.macOS)
+            {
+
+            }
 
             switch (targetPlatform)
             {
