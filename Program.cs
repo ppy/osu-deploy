@@ -20,11 +20,6 @@ namespace osu.Desktop.Deploy
         private const string templates_folder = "templates";
         private const string releases_folder = "releases";
 
-        /// <summary>
-        /// How many previous build deltas we want to keep when publishing.
-        /// </summary>
-        private const int keep_delta_count = 4;
-
         public static string? GitHubAccessToken = ConfigurationManager.AppSettings["GitHubAccessToken"];
         public static bool GitHubUpload = bool.Parse(ConfigurationManager.AppSettings["GitHubUpload"] ?? "false");
         public static string? GitHubUsername = ConfigurationManager.AppSettings["GitHubUsername"];
