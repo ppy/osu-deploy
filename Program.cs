@@ -50,7 +50,7 @@ namespace osu.Desktop.Deploy
         private static string templatesPath => Path.Combine(Environment.CurrentDirectory, templates_folder);
         private static string releasesPath => Path.Combine(Environment.CurrentDirectory, releases_folder);
 
-        private const string vpk_path = "vpk";
+        private const string vpk_path = "dotnet vpk";
 
         private static string iconPath
         {
@@ -69,7 +69,7 @@ namespace osu.Desktop.Deploy
             get
             {
                 Debug.Assert(solutionPath != null);
-                return Path.Combine(solutionPath, "assets\\lazer-nuget.png");
+                return Path.Combine(solutionPath, "assets", "lazer-nuget.png");
             }
         }
 
@@ -179,7 +179,7 @@ namespace osu.Desktop.Deploy
                     if (!string.IsNullOrEmpty(AppleNotaryProfileName))
                         extraCmd += $" --notaryProfile=\"{AppleNotaryProfileName}\"";
 
-                    extraCmd += $" --icon=\"{iconPath}\"";
+                    extraCmd += $" --icon=\"{iconPath}\" -p {stagingPath}";
                 }
 
                 string rid = $"{os}-{arch}";
@@ -234,12 +234,15 @@ namespace osu.Desktop.Deploy
                             : $" --signParams=\"/td sha256 /fd sha256 /f {WindowsCodeSigningCertPath} /p {codeSigningPassword} /tr http://timestamp.comodoca.com\"";
                     }
 
-                    extraCmd += $" --splashImage=\"{splashImagePath}\" --icon=\"{iconPath}\"";
+                    extraCmd += $" --splashImage=\"{splashImagePath}\" --icon=\"{iconPath}\" -p {stagingPath}";
                 }
 
                 var applicationName = targetPlatform == RuntimeInfo.Platform.Windows ? "osu!.exe" : "osu!";
 
-                runCommand(vpk_path, $"{os} pack -u {PackageName} -v {version} -r {rid} -o \"{releasesPath}\" -e \"{applicationName}\" --channel={channel} {extraCmd}");
+                runCommand(vpk_path, $"[{os}] pack -u {PackageName} -v {version} -r {rid} -o \"{releasesPath}\" -e \"{applicationName}\"  --channel={channel}{extraCmd}");
+
+                if (canGitHub && GitHubUpload)
+                    runCommand(vpk_path, $"upload github --repoUrl {GithubRepoUrl} --token {GitHubAccessToken} -o\"{releasesPath}\" --tag {version} --releaseName {version} --merge --channel={channel}");
             }
             else if (targetPlatform == RuntimeInfo.Platform.Android)
             {
