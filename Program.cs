@@ -210,7 +210,8 @@ namespace osu.Desktop.Deploy
                     {
                         // Retry again with wine
                         // TODO: Should probably change this to use RuntimeInfo.OS checks instead of fail values
-                        bool wineRcEditCommand = runCommand("wine", $"\"{Path.GetFullPath("tools/rcedit-x64.exe")}\" \"{Path.Combine(publishDir, "osu!.exe")}\" --set-icon \"{iconPath}\"", exitOnFail: false);
+                        bool wineRcEditCommand = runCommand("wine", $"\"{Path.GetFullPath("tools/rcedit-x64.exe")}\" \"{Path.Combine(publishDir, "osu!.exe")}\" --set-icon \"{iconPath}\"",
+                            exitOnFail: false);
                         if (!wineRcEditCommand)
                             error("Failed to set icon on osu!.exe");
                     }
@@ -242,7 +243,8 @@ namespace osu.Desktop.Deploy
                 runCommand(vpk_path, $"[{os}] pack -u {PackageName} -v {version} -r {rid} -o \"{releasesPath}\" -e \"{applicationName}\"  --channel={channel}{extraCmd}");
 
                 if (canGitHub && GitHubUpload)
-                    runCommand(vpk_path, $"upload github --repoUrl {GithubRepoUrl} --token {GitHubAccessToken} -o\"{releasesPath}\" --tag {version} --releaseName {version} --merge --channel={channel}");
+                    runCommand(vpk_path,
+                        $"upload github --repoUrl {GithubRepoUrl} --token {GitHubAccessToken} -o\"{releasesPath}\" --tag {version} --releaseName {version} --merge --channel={channel}");
             }
             else if (targetPlatform == RuntimeInfo.Platform.Android)
             {
@@ -415,7 +417,8 @@ namespace osu.Desktop.Deploy
             solutionPath = path;
         }
 
-        private static bool runCommand(string command, string args, bool useSolutionPath = true, Dictionary<string, string>? environmentVariables = null, bool throwIfNonZero = true, bool exitOnFail = true)
+        private static bool runCommand(string command, string args, bool useSolutionPath = true, Dictionary<string, string>? environmentVariables = null, bool throwIfNonZero = true,
+                                       bool exitOnFail = true)
         {
             write($"Running {command} {args}...");
 
@@ -452,6 +455,7 @@ namespace osu.Desktop.Deploy
             {
                 write(e.Message);
             }
+
             if (!throwIfNonZero) return false;
 
             if (exitOnFail)
