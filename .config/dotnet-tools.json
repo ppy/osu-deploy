@@ -3,7 +3,7 @@
   "isRoot": true,
   "tools": {
     "vpk": {
-      "version": "0.0.359",
+      "version": "0.0.560-g1083d56",
       "commands": [
         "vpk"
       ]

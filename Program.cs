@@ -45,8 +45,6 @@ namespace osu.Desktop.Deploy
         private static string templatesPath => Path.Combine(Environment.CurrentDirectory, templates_folder);
         private static string releasesPath => Path.Combine(Environment.CurrentDirectory, releases_folder);
 
-        private const string vpk_path = "dotnet vpk";
-
         private static string iconPath
         {
             get
@@ -180,7 +178,7 @@ namespace osu.Desktop.Deploy
                 string rid = $"{os}-{arch}";
                 string channel = rid == "win-x64" ? "win" : rid;
 
-                if (canGitHub) runCommand(vpk_path, $"download github --repoUrl {GithubRepoUrl} --token {GitHubAccessToken} --channel {channel} -o=\"{releasesPath}\"", throwIfNonZero: false);
+                if (canGitHub) runCommand("dotnet", $"vpk download github --repoUrl {GithubRepoUrl} --token {GitHubAccessToken} --channel {channel} -o=\"{releasesPath}\"", throwIfNonZero: false);
 
                 if (targetPlatform == RuntimeInfo.Platform.Linux)
                 {
@@ -193,7 +191,7 @@ namespace osu.Desktop.Deploy
                         new FileInfo(file).CopyTo(Path.Combine(stagingTarget, Path.GetFileName(file)));
                     runCommand("chmod", $"+x {stagingTarget}/AppRun");
                     publishDir = Path.Combine(stagingTarget, "usr/bin/");
-                    extraCmd += $" --appDir=\"{stagingTarget}\"";
+                    extraCmd += $" -p \"{stagingTarget}\"";
                 }
 
                 runCommand("dotnet", $"publish -f net8.0 -r {rid} {ProjectName} -o \"{publishDir}\" --configuration Release /p:Version={version} --self-contained");
@@ -235,11 +233,11 @@ namespace osu.Desktop.Deploy
 
                 var applicationName = targetPlatform == RuntimeInfo.Platform.Windows ? "osu!.exe" : "osu!";
 
-                runCommand(vpk_path, $"[{os}] pack -u {PackageName} -v {version} -r {rid} -o \"{releasesPath}\" -e \"{applicationName}\"  --channel={channel}{extraCmd}");
+                runCommand("dotnet", $"vpk [{os}] pack -u {PackageName} -v {version} -r {rid} -o \"{releasesPath}\" -e \"{applicationName}\"  --channel={channel}{extraCmd}");
 
                 if (canGitHub && GitHubUpload)
-                    runCommand(vpk_path,
-                        $"upload github --repoUrl {GithubRepoUrl} --token {GitHubAccessToken} -o\"{releasesPath}\" --tag {version} --releaseName {version} --merge --channel={channel}");
+                    runCommand("dotnet",
+                        $"vpk upload github --repoUrl {GithubRepoUrl} --token {GitHubAccessToken} -o\"{releasesPath}\" --tag {version} --releaseName {version} --merge --channel={channel}");
             }
             else if (targetPlatform == RuntimeInfo.Platform.Android)
             {
