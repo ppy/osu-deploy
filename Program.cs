@@ -178,7 +178,7 @@ namespace osu.Desktop.Deploy
                 string rid = $"{os}-{arch}";
                 string channel = rid == "win-x64" ? "win" : rid;
 
-                if (canGitHub) runCommand("dotnet", $"vpk download github --repoUrl {GithubRepoUrl} --token {GitHubAccessToken} --channel {channel} -o=\"{releasesPath}\"", throwIfNonZero: false);
+                if (canGitHub) runCommand("dotnet", $"vpk download github --repoUrl {GithubRepoUrl} --token {GitHubAccessToken} --channel {channel} -o=\"{releasesPath}\"", throwIfNonZero: false, useSolutionPath: false);
 
                 if (targetPlatform == RuntimeInfo.Platform.Linux)
                 {
@@ -233,11 +233,11 @@ namespace osu.Desktop.Deploy
 
                 var applicationName = targetPlatform == RuntimeInfo.Platform.Windows ? "osu!.exe" : "osu!";
 
-                runCommand("dotnet", $"vpk [{os}] pack -u {PackageName} -v {version} -r {rid} -o \"{releasesPath}\" -e \"{applicationName}\"  --channel={channel}{extraCmd}");
+                runCommand("dotnet", $"vpk [{os}] pack -u {PackageName} -v {version} -r {rid} -o \"{releasesPath}\" -e \"{applicationName}\"  --channel={channel}{extraCmd}", useSolutionPath: false);
 
                 if (canGitHub && GitHubUpload)
                     runCommand("dotnet",
-                        $"vpk upload github --repoUrl {GithubRepoUrl} --token {GitHubAccessToken} -o\"{releasesPath}\" --tag {version} --releaseName {version} --merge --channel={channel}");
+                        $"vpk upload github --repoUrl {GithubRepoUrl} --token {GitHubAccessToken} -o\"{releasesPath}\" --tag {version} --releaseName {version} --merge --channel={channel}", useSolutionPath: false);
             }
             else if (targetPlatform == RuntimeInfo.Platform.Android)
             {
