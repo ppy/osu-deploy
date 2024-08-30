@@ -7,8 +7,8 @@ using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
-using Newtonsoft.Json;
+using osu.Desktop.Deploy.Builders;
+using osu.Desktop.Deploy.Uploaders;
 using osu.Framework;
 using osu.Framework.IO.Network;
 
@@ -16,57 +16,36 @@ namespace osu.Desktop.Deploy
 {
     internal static class Program
     {
-        private const string staging_folder = "staging";
-        private const string templates_folder = "templates";
-        private const string releases_folder = "releases";
+        public const string STAGING_FOLDER = "staging";
+        public const string TEMPLATES_FOLDER = "templates";
+        public const string RELEASES_FOLDER = "releases";
 
-        public static string? GitHubAccessToken = ConfigurationManager.AppSettings["GitHubAccessToken"];
-        public static bool GitHubUpload = bool.Parse(ConfigurationManager.AppSettings["GitHubUpload"] ?? "false");
-        public static string? GitHubUsername = ConfigurationManager.AppSettings["GitHubUsername"];
-        public static string? GitHubRepoName = ConfigurationManager.AppSettings["GitHubRepoName"];
-        public static string? SolutionName = ConfigurationManager.AppSettings["SolutionName"];
-        public static string? ProjectName = ConfigurationManager.AppSettings["ProjectName"];
-        public static bool IncrementVersion = bool.Parse(ConfigurationManager.AppSettings["IncrementVersion"] ?? "true");
-        public static string? PackageName = ConfigurationManager.AppSettings["PackageName"];
-        public static string? IconName = ConfigurationManager.AppSettings["IconName"];
+        public static string StagingPath => Path.Combine(Environment.CurrentDirectory, STAGING_FOLDER);
+        public static string TemplatesPath => Path.Combine(Environment.CurrentDirectory, TEMPLATES_FOLDER);
+        public static string ReleasesPath => Path.Combine(Environment.CurrentDirectory, RELEASES_FOLDER);
 
-        public static string? AndroidCodeSigningCertPath = ConfigurationManager.AppSettings["AndroidCodeSigningCertPath"];
-        public static string? WindowsCodeSigningCertPath = ConfigurationManager.AppSettings["WindowsCodeSigningCertPath"];
-        public static string? AppleCodeSignCertName = ConfigurationManager.AppSettings["AppleCodeSignCertName"];
-        public static string? AppleInstallSignCertName = ConfigurationManager.AppSettings["AppleInstallSignCertName"];
-        public static string? AppleNotaryProfileName = ConfigurationManager.AppSettings["AppleNotaryProfileName"];
+        public static string SolutionName => GetConfiguration("SolutionName");
+        public static string ProjectName => GetConfiguration("ProjectName");
+        public static string PackageName => GetConfiguration("PackageName");
+        public static string IconName => GetConfiguration("IconName");
 
+        public static bool GitHubUpload => bool.Parse(ConfigurationManager.AppSettings["GitHubUpload"] ?? "false");
+        public static string? GitHubUsername => ConfigurationManager.AppSettings["GitHubUsername"];
+        public static string? GitHubRepoName => ConfigurationManager.AppSettings["GitHubRepoName"];
+        public static string? GitHubAccessToken => ConfigurationManager.AppSettings["GitHubAccessToken"];
         public static string GitHubApiEndpoint => $"https://api.github.com/repos/{GitHubUsername}/{GitHubRepoName}/releases";
-        public static string GithubRepoUrl => $"https://github.com/{GitHubUsername}/{GitHubRepoName}";
+        public static string GitHubRepoUrl => $"https://github.com/{GitHubUsername}/{GitHubRepoName}";
+        public static bool CanGitHub => !string.IsNullOrEmpty(GitHubAccessToken);
 
-        private static string? solutionPath;
+        public static string? WindowsCodeSigningCertPath => ConfigurationManager.AppSettings["WindowsCodeSigningCertPath"];
+        public static string? AndroidCodeSigningCertPath => ConfigurationManager.AppSettings["AndroidCodeSigningCertPath"];
+        public static string? AppleCodeSignCertName => ConfigurationManager.AppSettings["AppleCodeSignCertName"];
+        public static string? AppleInstallSignCertName => ConfigurationManager.AppSettings["AppleInstallSignCertName"];
+        public static string? AppleNotaryProfileName => ConfigurationManager.AppSettings["AppleNotaryProfileName"];
 
-        private static string stagingPath => Path.Combine(Environment.CurrentDirectory, staging_folder);
-        private static string templatesPath => Path.Combine(Environment.CurrentDirectory, templates_folder);
-        private static string releasesPath => Path.Combine(Environment.CurrentDirectory, releases_folder);
+        public static bool IncrementVersion => bool.Parse(ConfigurationManager.AppSettings["IncrementVersion"] ?? "true");
 
-        private static string iconPath
-        {
-            get
-            {
-                Debug.Assert(solutionPath != null);
-                Debug.Assert(ProjectName != null);
-                Debug.Assert(IconName != null);
-
-                return Path.Combine(solutionPath, ProjectName, IconName);
-            }
-        }
-
-        private static string splashImagePath
-        {
-            get
-            {
-                Debug.Assert(solutionPath != null);
-                return Path.Combine(solutionPath, "assets", "lazer-nuget.png");
-            }
-        }
-
-        private static readonly Stopwatch stopwatch = new Stopwatch();
+        public static string SolutionPath { get; private set; } = null!;
 
         private static bool interactive;
 
@@ -83,20 +62,20 @@ namespace osu.Desktop.Deploy
 
             findSolutionPath();
 
-            if (!Directory.Exists(releases_folder))
+            if (!Directory.Exists(RELEASES_FOLDER))
             {
-                write("WARNING: No release directory found. Make sure you want this!", ConsoleColor.Yellow);
-                Directory.CreateDirectory(releases_folder);
+                Logger.Write("WARNING: No release directory found. Make sure you want this!", ConsoleColor.Yellow);
+                Directory.CreateDirectory(RELEASES_FOLDER);
             }
 
             GitHubRelease? lastRelease = null;
 
-            if (canGitHub)
+            if (CanGitHub)
             {
-                write("Checking GitHub releases...");
-                lastRelease = getLastGithubRelease();
+                Logger.Write("Checking GitHub releases...");
+                lastRelease = GetLastGithubRelease();
 
-                write(lastRelease == null
+                Logger.Write(lastRelease == null
                     ? "This is the first GitHub release"
                     : $"Last GitHub release was {lastRelease.Name}.");
             }
@@ -123,182 +102,52 @@ namespace osu.Desktop.Deploy
             Console.WriteLine();
             Console.Write($"Ready to deploy version {version} on platform {targetPlatform}!");
 
-            pauseIfInteractive();
+            PauseIfInteractive();
 
-            stopwatch.Start();
+            Builder builder;
 
-            refreshDirectory(staging_folder);
-
-            Debug.Assert(solutionPath != null);
-
-            write("Running build process...");
-
-            if (targetPlatform == RuntimeInfo.Platform.Windows || targetPlatform == RuntimeInfo.Platform.Linux || targetPlatform == RuntimeInfo.Platform.macOS)
+            switch (targetPlatform)
             {
-                var os = targetPlatform switch
-                {
-                    RuntimeInfo.Platform.Windows => "win",
-                    RuntimeInfo.Platform.macOS => "mac",
-                    RuntimeInfo.Platform.Linux => "linux",
-                    _ => throw new ArgumentOutOfRangeException(nameof(targetPlatform), targetPlatform, null)
-                };
+                case RuntimeInfo.Platform.Windows:
+                    builder = new WindowsBuilder(version, getArg(0));
+                    break;
 
-                var arch = "x64";
-                string publishDir = stagingPath;
-                string extraCmd = "";
+                case RuntimeInfo.Platform.Linux:
+                    builder = new LinuxBuilder(version);
+                    break;
 
-                if (targetPlatform == RuntimeInfo.Platform.macOS)
-                {
-                    string targetArch = "";
+                case RuntimeInfo.Platform.macOS:
+                    builder = new MacOSBuilder(version, getArg(3));
+                    break;
 
-                    if (args.Length > 3)
-                    {
-                        targetArch = args[3];
-                    }
-                    else if (interactive)
-                    {
-                        Console.Write("Build for which architecture? [x64/arm64]: ");
-                        targetArch = Console.ReadLine() ?? string.Empty;
-                    }
+                case RuntimeInfo.Platform.iOS:
+                    builder = new IOSBuilder(version);
+                    break;
 
-                    if (targetArch != "x64" && targetArch != "arm64")
-                        error($"Invalid Architecture: {targetArch}");
+                case RuntimeInfo.Platform.Android:
+                    builder = new AndroidBuilder(version, getArg(0));
+                    break;
 
-                    arch = targetArch;
-
-                    if (!string.IsNullOrEmpty(AppleCodeSignCertName))
-                        extraCmd += $" --signAppIdentity=\"{AppleCodeSignCertName}\"";
-                    if (!string.IsNullOrEmpty(AppleInstallSignCertName))
-                        extraCmd += $" --signInstallIdentity=\"{AppleInstallSignCertName}\"";
-                    if (!string.IsNullOrEmpty(AppleNotaryProfileName))
-                        extraCmd += $" --notaryProfile=\"{AppleNotaryProfileName}\"";
-
-                    extraCmd += $" --icon=\"{iconPath}\" -p {stagingPath}";
-                }
-
-                string rid = $"{os}-{arch}";
-                string channel = rid == "win-x64" ? "win" : rid;
-
-                if (canGitHub)
-                {
-                    runCommand("dotnet", $"vpk download github --repoUrl {GithubRepoUrl} --token {GitHubAccessToken} --channel {channel} -o=\"{releasesPath}\"", throwIfNonZero: false,
-                        useSolutionPath: false);
-                }
-
-                if (targetPlatform == RuntimeInfo.Platform.Linux)
-                {
-                    const string app_dir = "osu!.AppDir";
-                    string stagingTarget = Path.Combine(stagingPath, app_dir);
-                    if (Directory.Exists(stagingTarget))
-                        Directory.Delete(stagingTarget, true);
-                    Directory.CreateDirectory(stagingTarget);
-                    foreach (var file in Directory.GetFiles(Path.Combine(templatesPath, app_dir)))
-                        new FileInfo(file).CopyTo(Path.Combine(stagingTarget, Path.GetFileName(file)));
-                    runCommand("chmod", $"+x {stagingTarget}/AppRun");
-                    publishDir = Path.Combine(stagingTarget, "usr/bin/");
-                    extraCmd += $" -p \"{stagingTarget}\"";
-                }
-
-                runCommand("dotnet", $"publish -f net8.0 -r {rid} {ProjectName} -o \"{publishDir}\" --configuration Release /p:Version={version} --self-contained");
-
-                if (targetPlatform == RuntimeInfo.Platform.Windows)
-                {
-                    bool rcEditCommand = runCommand("tools/rcedit-x64.exe", $"\"{Path.Combine(publishDir, "osu!.exe")}\" --set-icon \"{iconPath}\"", exitOnFail: false);
-
-                    if (!rcEditCommand)
-                    {
-                        // Retry again with wine
-                        // TODO: Should probably change this to use RuntimeInfo.OS checks instead of fail values
-                        bool wineRcEditCommand = runCommand("wine", $"\"{Path.GetFullPath("tools/rcedit-x64.exe")}\" \"{Path.Combine(publishDir, "osu!.exe")}\" --set-icon \"{iconPath}\"",
-                            exitOnFail: false);
-                        if (!wineRcEditCommand)
-                            error("Failed to set icon on osu!.exe");
-                    }
-
-                    if (!string.IsNullOrEmpty(WindowsCodeSigningCertPath))
-                    {
-                        string? codeSigningPassword;
-
-                        if (args.Length > 0)
-                        {
-                            codeSigningPassword = args[0];
-                        }
-                        else
-                        {
-                            Console.Write("Enter code signing password: ");
-                            codeSigningPassword = readLineMasked();
-                        }
-
-                        extraCmd += string.IsNullOrEmpty(codeSigningPassword)
-                            ? ""
-                            : $" --signParams=\"/td sha256 /fd sha256 /f {WindowsCodeSigningCertPath} /p {codeSigningPassword} /tr http://timestamp.comodoca.com\"";
-                    }
-
-                    extraCmd += $" --splashImage=\"{splashImagePath}\" --icon=\"{iconPath}\" -p {stagingPath}";
-                }
-
-                var applicationName = targetPlatform == RuntimeInfo.Platform.Windows ? "osu!.exe" : "osu!";
-
-                runCommand("dotnet", $"vpk [{os}] pack -u {PackageName} -v {version} -r {rid} -o \"{releasesPath}\" -e \"{applicationName}\"  --channel={channel}{extraCmd}", useSolutionPath: false);
-
-                if (canGitHub && GitHubUpload)
-                {
-                    runCommand("dotnet",
-                        $"vpk upload github --repoUrl {GithubRepoUrl} --token {GitHubAccessToken} -o\"{releasesPath}\" --tag {version} --releaseName {version} --merge --channel={channel}",
-                        useSolutionPath: false);
-                }
-            }
-            else if (targetPlatform == RuntimeInfo.Platform.Android)
-            {
-                string codeSigningArguments = string.Empty;
-
-                if (!string.IsNullOrEmpty(AndroidCodeSigningCertPath))
-                {
-                    string? codeSigningPassword;
-
-                    if (args.Length > 0)
-                    {
-                        codeSigningPassword = args[0];
-                    }
-                    else
-                    {
-                        Console.Write("Enter code signing password: ");
-                        codeSigningPassword = readLineMasked();
-                    }
-
-                    codeSigningArguments +=
-                        $" -p:AndroidKeyStore=true -p:AndroidSigningKeyStore={AndroidCodeSigningCertPath} -p:AndroidSigningKeyAlias={Path.GetFileNameWithoutExtension(AndroidCodeSigningCertPath)} -p:AndroidSigningKeyPass={codeSigningPassword} -p:AndroidSigningKeyStorePass={codeSigningPassword}";
-                }
-
-                string[] versionParts = version.Split('.');
-                string versionCode = versionParts[0].PadLeft(4, '0') + versionParts[1].PadLeft(4, '0') + versionParts[2].PadLeft(1, '0');
-
-                runCommand("dotnet",
-                    $"publish -f net8.0-android -r android-arm64 -c Release -o \"{stagingPath}\" -p:Version={version} -p:ApplicationVersion={versionCode} {codeSigningArguments} --self-contained osu.Android/osu.Android.csproj");
-
-                File.Move(Path.Combine(stagingPath, "sh.ppy.osulazer-Signed.apk"), Path.Combine(releasesPath, "sh.ppy.osulazer.apk"), true);
-                if (canGitHub && GitHubUpload) uploadBuild(version);
-            }
-            else if (targetPlatform == RuntimeInfo.Platform.iOS)
-            {
-                runCommand("dotnet",
-                    $"publish -f net8.0-ios -r ios-arm64 {ProjectName} -o \"{stagingPath}\" -c Release -p:Version={version} -p:ApplicationDisplayVersion=1.0 --self-contained osu.iOS/osu.iOS.csproj");
-
-                File.Move(Path.Combine(stagingPath, "osu.iOS.app"), Path.Combine(releasesPath, "osu.iOS.app"), true);
-                if (canGitHub && GitHubUpload) uploadBuild(version);
-            }
-            else
-            {
-                throw new PlatformNotSupportedException(targetPlatform.ToString());
+                default:
+                    throw new PlatformNotSupportedException(targetPlatform.ToString());
             }
 
-            if (canGitHub && GitHubUpload)
-            {
+            Uploader uploader = builder.CreateUploader();
+
+            Logger.Write("Restoring previous build...");
+            uploader.RestoreBuild();
+
+            Logger.Write("Running build...");
+            builder.Build();
+
+            Logger.Write("Creating release...");
+            uploader.PublishBuild(version);
+
+            if (CanGitHub && GitHubUpload)
                 openGitHubReleasePage();
-            }
 
-            write("Done!");
-            pauseIfInteractive();
+            Logger.Write("Done!");
+            PauseIfInteractive();
         }
 
         private static void displayHeader()
@@ -311,84 +160,20 @@ namespace osu.Desktop.Deploy
             Console.WriteLine();
         }
 
-        private static IEnumerable<ReleaseLine> getReleaseLines()
-        {
-            return File.ReadAllLines(Path.Combine(releases_folder, "RELEASES")).Select(l => new ReleaseLine(l));
-        }
-
-        private static void uploadBuild(string version)
-        {
-            write("Publishing to GitHub...");
-
-            var req = new JsonWebRequest<GitHubRelease>($"{GitHubApiEndpoint}")
-            {
-                Method = HttpMethod.Post,
-            };
-
-            GitHubRelease? targetRelease = getLastGithubRelease(true);
-
-            if (targetRelease == null || targetRelease.TagName != version)
-            {
-                write($"- Creating release {version}...", ConsoleColor.Yellow);
-                req.AddRaw(JsonConvert.SerializeObject(new GitHubRelease
-                {
-                    Name = version,
-                    Draft = true,
-                }));
-                req.AuthenticatedBlockingPerform();
-
-                targetRelease = req.ResponseObject;
-            }
-            else
-            {
-                write($"- Adding to existing release {version}...", ConsoleColor.Yellow);
-            }
-
-            Debug.Assert(targetRelease.UploadUrl != null);
-
-            var assetUploadUrl = targetRelease.UploadUrl.Replace("{?name,label}", "?name={0}");
-
-            foreach (var a in Directory.GetFiles(releases_folder).Reverse()) //reverse to upload RELEASES first.
-            {
-                if (Path.GetFileName(a).StartsWith('.'))
-                    continue;
-
-                write($"- Adding asset {a}...", ConsoleColor.Yellow);
-                var upload = new WebRequest(assetUploadUrl, Path.GetFileName(a))
-                {
-                    Method = HttpMethod.Post,
-                    Timeout = 240000,
-                    ContentType = "application/octet-stream",
-                };
-
-                upload.AddRaw(File.ReadAllBytes(a));
-                upload.AuthenticatedBlockingPerform();
-            }
-        }
-
         private static void openGitHubReleasePage()
         {
             Process.Start(new ProcessStartInfo
             {
-                FileName = $"https://github.com/{GitHubUsername}/{GitHubRepoName}/releases",
+                FileName = GitHubApiEndpoint,
                 UseShellExecute = true //see https://github.com/dotnet/corefx/issues/10361
             });
         }
 
-        private static bool canGitHub => !string.IsNullOrEmpty(GitHubAccessToken);
-
-        private static GitHubRelease? getLastGithubRelease(bool includeDrafts = false)
+        public static GitHubRelease? GetLastGithubRelease(bool includeDrafts = false)
         {
             var req = new JsonWebRequest<List<GitHubRelease>>($"{GitHubApiEndpoint}");
             req.AuthenticatedBlockingPerform();
             return req.ResponseObject.FirstOrDefault(r => includeDrafts || !r.Draft);
-        }
-
-        private static void refreshDirectory(string directory)
-        {
-            if (Directory.Exists(directory))
-                Directory.Delete(directory, true);
-            Directory.CreateDirectory(directory);
         }
 
         /// <summary>
@@ -403,10 +188,10 @@ namespace osu.Desktop.Deploy
 
             while (true)
             {
-                if (File.Exists(Path.Combine(path, $"{SolutionName}.sln")))
+                if (File.Exists(Path.Combine(path, $"{Program.SolutionName}.sln")))
                     break;
 
-                if (Directory.Exists(Path.Combine(path, "osu")) && File.Exists(Path.Combine(path, "osu", $"{SolutionName}.sln")))
+                if (Directory.Exists(Path.Combine(path, "osu")) && File.Exists(Path.Combine(path, "osu", $"{Program.SolutionName}.sln")))
                 {
                     path = Path.Combine(path, "osu");
                     break;
@@ -415,19 +200,17 @@ namespace osu.Desktop.Deploy
                 path = path.Remove(path.LastIndexOf(Path.DirectorySeparatorChar));
             }
 
-            path += Path.DirectorySeparatorChar;
-
-            solutionPath = path;
+            SolutionPath = path + Path.DirectorySeparatorChar;
         }
 
-        private static bool runCommand(string command, string args, bool useSolutionPath = true, Dictionary<string, string>? environmentVariables = null, bool throwIfNonZero = true,
-                                       bool exitOnFail = true)
+        public static bool RunCommand(string command, string args, bool useSolutionPath = true, Dictionary<string, string>? environmentVariables = null, bool throwIfNonZero = true,
+                                      bool exitOnFail = true)
         {
-            write($"Running {command} {args}...");
+            Logger.Write($"Running {command} {args}...");
 
             var psi = new ProcessStartInfo(command, args)
             {
-                WorkingDirectory = useSolutionPath ? solutionPath : Environment.CurrentDirectory,
+                WorkingDirectory = useSolutionPath ? SolutionPath : Environment.CurrentDirectory,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -453,43 +236,36 @@ namespace osu.Desktop.Deploy
 
                 if (p.ExitCode == 0) return true;
 
-                write(output);
+                Logger.Write(output);
             }
             catch (Exception e)
             {
-                write(e.Message);
+                Logger.Write(e.Message);
             }
 
             if (!throwIfNonZero) return false;
 
             if (exitOnFail)
-                error($"Command {command} {args} failed!");
+                Logger.Error($"Command {command} {args} failed!");
             else
-                write($"Command {command} {args} failed!");
+                Logger.Write($"Command {command} {args} failed!");
             return false;
         }
 
-        private static string? readLineMasked()
+        public static string? ReadLineMasked(string prompt)
         {
+            Console.WriteLine(prompt);
+
             var fg = Console.ForegroundColor;
             Console.ForegroundColor = Console.BackgroundColor;
+
             var ret = Console.ReadLine();
             Console.ForegroundColor = fg;
 
             return ret;
         }
 
-        private static void error(string message)
-        {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"FATAL ERROR: {message}");
-            Console.ResetColor();
-
-            pauseIfInteractive();
-            Environment.Exit(-1);
-        }
-
-        private static void pauseIfInteractive()
+        public static void PauseIfInteractive()
         {
             if (interactive)
                 Console.ReadLine();
@@ -497,52 +273,19 @@ namespace osu.Desktop.Deploy
                 Console.WriteLine();
         }
 
-        private static void write(string message, ConsoleColor col = ConsoleColor.Gray)
-        {
-            if (stopwatch.ElapsedMilliseconds > 0)
-            {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.Write(stopwatch.ElapsedMilliseconds.ToString().PadRight(8));
-            }
-
-            Console.ForegroundColor = col;
-            Console.WriteLine(message);
-        }
+        public static string GetConfiguration(string key)
+            => ConfigurationManager.AppSettings[key] ?? throw new Exception($"Configuration key '{key}' not found.");
 
         public static void AuthenticatedBlockingPerform(this WebRequest r)
         {
             r.AddHeader("Authorization", $"token {GitHubAccessToken}");
             r.Perform();
         }
-    }
 
-    internal class RawFileWebRequest : WebRequest
-    {
-        public RawFileWebRequest(string url)
-            : base(url)
+        private static string? getArg(int index)
         {
-        }
-
-        protected override string Accept => "application/octet-stream";
-    }
-
-    internal class ReleaseLine
-    {
-        public string Hash;
-        public string Filename;
-        public int Filesize;
-
-        public ReleaseLine(string line)
-        {
-            var split = line.Split(' ');
-            Hash = split[0];
-            Filename = split[1];
-            Filesize = int.Parse(split[2]);
-        }
-
-        public override string ToString()
-        {
-            return $"{Hash} {Filename} {Filesize}";
+            string[] args = Environment.GetCommandLineArgs();
+            return args.Length > ++index ? args[index] : null;
         }
     }
 }
