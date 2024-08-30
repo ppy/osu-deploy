@@ -22,11 +22,8 @@ namespace osu.Desktop.Deploy
 
         public static void Write(string message, ConsoleColor col = ConsoleColor.Gray)
         {
-            if (stopwatch.ElapsedMilliseconds > 0)
-            {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.Write(stopwatch.ElapsedMilliseconds.ToString().PadRight(8));
-            }
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.Write(stopwatch.ElapsedMilliseconds.ToString().PadRight(8));
 
             Console.ForegroundColor = col;
             Console.WriteLine(message);
