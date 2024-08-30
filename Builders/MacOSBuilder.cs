@@ -48,6 +48,8 @@ namespace osu.Desktop.Deploy.Builders
                 extraArgs += $" --signInstallIdentity=\"{Program.AppleInstallSignCertName}\"";
             if (!string.IsNullOrEmpty(Program.AppleNotaryProfileName))
                 extraArgs += $" --notaryProfile=\"{Program.AppleNotaryProfileName}\"";
+            if (!string.IsNullOrEmpty(Program.AppleKeyChainPath))
+                extraArgs += $" --keychain=\"{Program.AppleKeyChainPath}\"";
 
             return new VelopackUploader(app_name, os_name, RuntimeIdentifier, RuntimeIdentifier, extraArgs: extraArgs, stagingPath: stagingTarget);
         }

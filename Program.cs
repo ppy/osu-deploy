@@ -42,6 +42,7 @@ namespace osu.Desktop.Deploy
         public static string? AppleCodeSignCertName => ConfigurationManager.AppSettings["AppleCodeSignCertName"];
         public static string? AppleInstallSignCertName => ConfigurationManager.AppSettings["AppleInstallSignCertName"];
         public static string? AppleNotaryProfileName => ConfigurationManager.AppSettings["AppleNotaryProfileName"];
+        public static string? AppleKeyChainPath => ConfigurationManager.AppSettings["AppleKeyChainPath"];
 
         public static bool IncrementVersion => bool.Parse(ConfigurationManager.AppSettings["IncrementVersion"] ?? "true");
 
