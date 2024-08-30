@@ -150,6 +150,7 @@ namespace osu.Desktop.Deploy
                 if (targetPlatform == RuntimeInfo.Platform.macOS)
                 {
                     string targetArch = "";
+
                     if (args.Length > 3)
                     {
                         targetArch = args[3];
@@ -178,7 +179,11 @@ namespace osu.Desktop.Deploy
                 string rid = $"{os}-{arch}";
                 string channel = rid == "win-x64" ? "win" : rid;
 
-                if (canGitHub) runCommand("dotnet", $"vpk download github --repoUrl {GithubRepoUrl} --token {GitHubAccessToken} --channel {channel} -o=\"{releasesPath}\"", throwIfNonZero: false, useSolutionPath: false);
+                if (canGitHub)
+                {
+                    runCommand("dotnet", $"vpk download github --repoUrl {GithubRepoUrl} --token {GitHubAccessToken} --channel {channel} -o=\"{releasesPath}\"", throwIfNonZero: false,
+                        useSolutionPath: false);
+                }
 
                 if (targetPlatform == RuntimeInfo.Platform.Linux)
                 {
@@ -199,6 +204,7 @@ namespace osu.Desktop.Deploy
                 if (targetPlatform == RuntimeInfo.Platform.Windows)
                 {
                     bool rcEditCommand = runCommand("tools/rcedit-x64.exe", $"\"{Path.Combine(publishDir, "osu!.exe")}\" --set-icon \"{iconPath}\"", exitOnFail: false);
+
                     if (!rcEditCommand)
                     {
                         // Retry again with wine
@@ -236,8 +242,11 @@ namespace osu.Desktop.Deploy
                 runCommand("dotnet", $"vpk [{os}] pack -u {PackageName} -v {version} -r {rid} -o \"{releasesPath}\" -e \"{applicationName}\"  --channel={channel}{extraCmd}", useSolutionPath: false);
 
                 if (canGitHub && GitHubUpload)
+                {
                     runCommand("dotnet",
-                        $"vpk upload github --repoUrl {GithubRepoUrl} --token {GitHubAccessToken} -o\"{releasesPath}\" --tag {version} --releaseName {version} --merge --channel={channel}", useSolutionPath: false);
+                        $"vpk upload github --repoUrl {GithubRepoUrl} --token {GitHubAccessToken} -o\"{releasesPath}\" --tag {version} --releaseName {version} --merge --channel={channel}",
+                        useSolutionPath: false);
+                }
             }
             else if (targetPlatform == RuntimeInfo.Platform.Android)
             {
@@ -338,6 +347,7 @@ namespace osu.Desktop.Deploy
             Debug.Assert(targetRelease.UploadUrl != null);
 
             var assetUploadUrl = targetRelease.UploadUrl.Replace("{?name,label}", "?name={0}");
+
             foreach (var a in Directory.GetFiles(releases_folder).Reverse()) //reverse to upload RELEASES first.
             {
                 if (Path.GetFileName(a).StartsWith('.'))
@@ -442,6 +452,7 @@ namespace osu.Desktop.Deploy
                 p.WaitForExit();
 
                 if (p.ExitCode == 0) return true;
+
                 write(output);
             }
             catch (Exception e)
