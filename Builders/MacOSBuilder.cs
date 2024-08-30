@@ -39,7 +39,8 @@ namespace osu.Desktop.Deploy.Builders
 
         public override Uploader CreateUploader()
         {
-            string extraArgs = $" --signEntitlements=\"{Path.Combine(Environment.CurrentDirectory, "osu.entitlements")}\"";
+            string extraArgs = $" --signEntitlements=\"{Path.Combine(Environment.CurrentDirectory, "osu.entitlements")}\""
+                               + $" --noInst";
 
             if (!string.IsNullOrEmpty(Program.AppleCodeSignCertName))
                 extraArgs += $" --signAppIdentity=\"{Program.AppleCodeSignCertName}\"";
