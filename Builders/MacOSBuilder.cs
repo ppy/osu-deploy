@@ -9,7 +9,7 @@ namespace osu.Desktop.Deploy.Builders
     public class MacOSBuilder : Builder
     {
         private const string app_name = "osu!";
-        private const string os_name = "mac";
+        private const string os_name = "osx";
 
         public MacOSBuilder(string version, string? arch)
             : base(version)
