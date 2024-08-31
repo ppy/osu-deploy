@@ -27,7 +27,8 @@ namespace osu.Desktop.Deploy.Builders
         public override Uploader CreateUploader()
         {
             string extraArgs = $" --splashImage=\"{SplashImagePath}\""
-                               + $" --icon=\"{IconPath}\"";
+                               + $" --icon=\"{IconPath}\""
+                               + $" --noPortable";
 
             if (!string.IsNullOrEmpty(Program.WindowsCodeSigningCertPath))
                 extraArgs += $" --signParams=\"/td sha256 /fd sha256 /f {Program.WindowsCodeSigningCertPath} /p {codeSigningPassword} /tr http://timestamp.comodoca.com\"";
