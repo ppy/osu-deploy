@@ -104,6 +104,8 @@ namespace osu.Desktop.Deploy
 
             PauseIfInteractive();
 
+            RunCommand("dotnet", "tool restore");
+
             Builder builder;
 
             switch (targetPlatform)
