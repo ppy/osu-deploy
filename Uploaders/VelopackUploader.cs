@@ -1,6 +1,11 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
+using System.Linq;
+using System.Net.Http;
+using osu.Framework.IO.Network;
+
 namespace osu.Desktop.Deploy.Uploaders
 {
     public class VelopackUploader : Uploader
@@ -62,6 +67,32 @@ namespace osu.Desktop.Deploy.Uploaders
                                              + $" --channel=\"{channel}\"",
                     useSolutionPath: false);
             }
+        }
+
+        protected void RenameAsset(string fromName, string toName)
+        {
+            if (!Program.CanGitHub || !Program.GitHubUpload)
+                return;
+
+            Logger.Write($"Renaming asset '{fromName}' to '{toName}'");
+
+            GitHubRelease targetRelease = Program.GetLastGithubRelease(true)
+                                          ?? throw new Exception("Release not found.");
+
+            GitHubAsset asset = targetRelease.Assets.SingleOrDefault(a => a.Name == fromName)
+                                ?? throw new Exception($"Asset '{fromName}' not found in the release.");
+
+            var req = new WebRequest(asset.Url)
+            {
+                Method = HttpMethod.Patch,
+            };
+
+            req.AddRaw(
+                $$"""
+                  { "name": "{{toName}}" }
+                  """);
+
+            req.AuthenticatedBlockingPerform();
         }
     }
 }

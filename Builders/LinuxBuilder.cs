@@ -25,7 +25,7 @@ namespace osu.Desktop.Deploy.Builders
         protected override string TargetFramework => "net8.0";
         protected override string RuntimeIdentifier => $"{os_name}-x64";
 
-        public override Uploader CreateUploader() => new VelopackUploader(app_name, os_name, RuntimeIdentifier, RuntimeIdentifier, stagingPath: stagingTarget);
+        public override Uploader CreateUploader() => new LinuxVelopackUploader(app_name, os_name, RuntimeIdentifier, RuntimeIdentifier, stagingPath: stagingTarget);
 
         public override void Build()
         {

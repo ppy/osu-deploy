@@ -5,12 +5,15 @@ using Newtonsoft.Json;
 
 namespace osu.Desktop.Deploy
 {
-    public class GitHubObject
+    public class GitHubAsset
     {
-        [JsonProperty(@"id")]
+        [JsonProperty("url")]
+        public string Url = string.Empty;
+
+        [JsonProperty("id")]
         public int Id;
 
-        [JsonProperty(@"name")]
+        [JsonProperty("name")]
         public string Name = string.Empty;
     }
 }
