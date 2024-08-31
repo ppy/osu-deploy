@@ -27,10 +27,10 @@ namespace osu.Desktop.Deploy.Uploaders
             if (Program.CanGitHub)
             {
                 Program.RunCommand("dotnet", $"vpk download github"
-                                             + $" --repoUrl {Program.GitHubRepoUrl}"
-                                             + $" --token {Program.GitHubAccessToken}"
-                                             + $" --channel {channel}"
-                                             + $" -o=\"{Program.ReleasesPath}\"",
+                                             + $" --repoUrl=\"{Program.GitHubRepoUrl}\""
+                                             + $" --token=\"{Program.GitHubAccessToken}\""
+                                             + $" --channel=\"{channel}\""
+                                             + $" --outputDir=\"{Program.ReleasesPath}\"",
                     throwIfNonZero: false,
                     useSolutionPath: false);
             }
@@ -39,26 +39,26 @@ namespace osu.Desktop.Deploy.Uploaders
         public override void PublishBuild(string version)
         {
             Program.RunCommand("dotnet", $"vpk [{operatingSystemName}] pack"
-                                         + $" -u {Program.PackageName}"
-                                         + $" -v {version}"
-                                         + $" -r {runtimeIdentifier}"
-                                         + $" -o \"{Program.ReleasesPath}\""
-                                         + $" -e \"{applicationName}\""
-                                         + $" -p \"{stagingPath}\""
-                                         + $" --channel={channel}"
+                                         + $" --packId=\"{Program.PackageName}\""
+                                         + $" --packVersion=\"{version}\""
+                                         + $" --runtime=\"{runtimeIdentifier}\""
+                                         + $" --outputDir=\"{Program.ReleasesPath}\""
+                                         + $" --mainExe=\"{applicationName}\""
+                                         + $" --packDir=\"{stagingPath}\""
+                                         + $" --channel=\"{channel}\""
                                          + $" {extraArgs}",
                 useSolutionPath: false);
 
             if (Program.CanGitHub && Program.GitHubUpload)
             {
                 Program.RunCommand("dotnet", $"vpk upload github"
-                                             + $" --repoUrl {Program.GitHubRepoUrl}"
-                                             + $" --token {Program.GitHubAccessToken}"
-                                             + $" -o\"{Program.ReleasesPath}\""
-                                             + $" --tag {version}"
-                                             + $" --releaseName {version}"
+                                             + $" --repoUrl=\"{Program.GitHubRepoUrl}\""
+                                             + $" --token=\"{Program.GitHubAccessToken}\""
+                                             + $" --outputDir=\"{Program.ReleasesPath}\""
+                                             + $" --tag=\"{version}\""
+                                             + $" --releaseName=\"{version}\""
                                              + $" --merge"
-                                             + $" --channel={channel}",
+                                             + $" --channel=\"{channel}\"",
                     useSolutionPath: false);
             }
         }
