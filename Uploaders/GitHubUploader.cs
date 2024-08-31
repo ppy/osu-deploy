@@ -19,6 +19,9 @@ namespace osu.Desktop.Deploy.Uploaders
 
         public override void PublishBuild(string version)
         {
+            if (!Program.CanGitHub || !Program.GitHubUpload)
+                return;
+
             var req = new JsonWebRequest<GitHubRelease>($"{Program.GitHubApiEndpoint}")
             {
                 Method = HttpMethod.Post,
