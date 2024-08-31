@@ -51,7 +51,7 @@ namespace osu.Desktop.Deploy.Builders
             if (!string.IsNullOrEmpty(Program.AppleKeyChainPath))
                 extraArgs += $" --keychain=\"{Program.AppleKeyChainPath}\"";
 
-            return new VelopackUploader(app_name, os_name, RuntimeIdentifier, RuntimeIdentifier, extraArgs: extraArgs, stagingPath: stagingTarget);
+            return new MacOSVelopackUploader(app_name, os_name, RuntimeIdentifier, RuntimeIdentifier, extraArgs: extraArgs, stagingPath: stagingTarget);
         }
 
         public override void Build()
