@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.IO;
 using osu.Desktop.Deploy.Uploaders;
 
@@ -26,8 +27,9 @@ namespace osu.Desktop.Deploy.Builders
 
         public override Uploader CreateUploader()
         {
+            string installIcon = Path.Combine(Environment.CurrentDirectory, "install.ico");
             string extraArgs = $" --splashImage=\"{SplashImagePath}\""
-                               + $" --icon=\"{IconPath}\""
+                               + $" --icon=\"{installIcon}\""
                                + $" --noPortable";
 
             if (!string.IsNullOrEmpty(Program.WindowsCodeSigningCertPath))
