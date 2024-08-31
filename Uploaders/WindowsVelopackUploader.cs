@@ -16,7 +16,7 @@ namespace osu.Desktop.Deploy.Uploaders
         public override void PublishBuild(string version)
         {
             base.PublishBuild(version);
-            RenameAsset($"{Program.PackageName}-{channel}-Setup.exe", "installer.exe");
+            RenameAsset($"{Program.PackageName}-{channel}-Setup.exe", "install.exe");
         }
     }
 }
