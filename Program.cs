@@ -105,7 +105,7 @@ namespace osu.Desktop.Deploy
 
             PauseIfInteractive();
 
-            RunCommand("dotnet", "tool restore");
+            RunCommand("dotnet", "tool restore", useSolutionPath: false);
 
             Builder builder;
 
