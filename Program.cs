@@ -98,6 +98,7 @@ namespace osu.Desktop.Deploy
                 Enum.TryParse(args[2], true, out targetPlatform);
 
             Console.ResetColor();
+            Console.WriteLine($"Increment Version:     {IncrementVersion}");
             Console.WriteLine($"Signing Certificate:   {WindowsCodeSigningCertPath}");
             Console.WriteLine($"Upload to GitHub:      {GitHubUpload}");
             Console.WriteLine();
@@ -191,10 +192,10 @@ namespace osu.Desktop.Deploy
 
             while (true)
             {
-                if (File.Exists(Path.Combine(path, $"{Program.SolutionName}.sln")))
+                if (File.Exists(Path.Combine(path, $"{SolutionName}.sln")))
                     break;
 
-                if (Directory.Exists(Path.Combine(path, "osu")) && File.Exists(Path.Combine(path, "osu", $"{Program.SolutionName}.sln")))
+                if (Directory.Exists(Path.Combine(path, "osu")) && File.Exists(Path.Combine(path, "osu", $"{SolutionName}.sln")))
                 {
                     path = Path.Combine(path, "osu");
                     break;
