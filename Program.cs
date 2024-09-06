@@ -26,6 +26,7 @@ namespace osu.Desktop.Deploy
 
         public static string SolutionName => GetConfiguration("SolutionName");
         public static string ProjectName => GetConfiguration("ProjectName");
+        public static string PackageTitle => GetConfiguration("PackageTitle");
         public static string PackageName => GetConfiguration("PackageName");
         public static string IconName => GetConfiguration("IconName");
 

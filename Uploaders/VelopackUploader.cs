@@ -44,7 +44,7 @@ namespace osu.Desktop.Deploy.Uploaders
         public override void PublishBuild(string version)
         {
             Program.RunCommand("dotnet", $"vpk [{operatingSystemName}] pack"
-                                         + $" --packTitle=\"osu!\""
+                                         + $" --packTitle=\"{Program.PackageTitle}\""
                                          + $" --packId=\"{Program.PackageName}\""
                                          + $" --packVersion=\"{version}\""
                                          + $" --runtime=\"{runtimeIdentifier}\""
