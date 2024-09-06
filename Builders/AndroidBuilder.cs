@@ -33,7 +33,7 @@ namespace osu.Desktop.Deploy.Builders
                     + $" -p:AndroidSigningKeyStore={Program.AndroidCodeSigningCertPath}"
                     + $" -p:AndroidSigningKeyAlias={Path.GetFileNameWithoutExtension(Program.AndroidCodeSigningCertPath)}"
                     + $" -p:AndroidSigningKeyPass={codeSigningPassword}"
-                    + $" -p:AndroidSigningKeyStorePass={codeSigningPassword}";
+                    + $" -p:AndroidSigningStorePass={codeSigningPassword}";
             }
 
             string[] versionParts = Version.Split('.');
