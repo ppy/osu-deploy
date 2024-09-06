@@ -49,7 +49,7 @@ namespace osu.Desktop.Deploy.Builders
             if (!string.IsNullOrEmpty(Program.AppleNotaryProfileName))
                 extraArgs += $" --notaryProfile=\"{Program.AppleNotaryProfileName}\"";
             if (!string.IsNullOrEmpty(Program.AppleKeyChainPath))
-                extraArgs += $" --keychain=\"{Program.AppleKeyChainPath}\"";
+                extraArgs += $" --keychain=\"{Path.GetFullPath(Program.AppleKeyChainPath)}\"";
 
             return new MacOSVelopackUploader(app_name, os_name, RuntimeIdentifier, RuntimeIdentifier, extraArgs: extraArgs, stagingPath: stagingTarget);
         }
