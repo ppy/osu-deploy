@@ -41,10 +41,13 @@ namespace osu.Desktop.Deploy.Uploaders
             }
         }
 
+        // influences the name of the .app bundle. but needs to be osu!(lazer) for windows shortcuts
+        protected virtual string PackTitle => "osu!";
+
         public override void PublishBuild(string version)
         {
             Program.RunCommand("dotnet", $"vpk [{operatingSystemName}] pack"
-                                         + $" --packTitle=\"osu!\""
+                                         + $" --packTitle=\"{PackTitle}\""
                                          + $" --packId=\"{Program.PackageName}\""
                                          + $" --packVersion=\"{version}\""
                                          + $" --runtime=\"{runtimeIdentifier}\""

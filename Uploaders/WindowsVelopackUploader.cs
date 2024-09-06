@@ -13,6 +13,8 @@ namespace osu.Desktop.Deploy.Uploaders
             this.channel = channel;
         }
 
+        protected override string PackTitle => "osu!(lazer)";
+
         public override void PublishBuild(string version)
         {
             base.PublishBuild(version);
