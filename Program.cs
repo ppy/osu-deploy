@@ -210,11 +210,14 @@ namespace osu.Desktop.Deploy
         public static bool RunCommand(string command, string args, bool useSolutionPath = true, Dictionary<string, string>? environmentVariables = null, bool throwIfNonZero = true,
                                       bool exitOnFail = true)
         {
+            string workingDirectory = useSolutionPath ? SolutionPath : Environment.CurrentDirectory;
+
+            Logger.Write($"Using working directory  {workingDirectory}...");
             Logger.Write($"Running {command} {args}...");
 
             var psi = new ProcessStartInfo(command, args)
             {
-                WorkingDirectory = useSolutionPath ? SolutionPath : Environment.CurrentDirectory,
+                WorkingDirectory = workingDirectory,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
