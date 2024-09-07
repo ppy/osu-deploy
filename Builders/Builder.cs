@@ -11,7 +11,7 @@ namespace osu.Desktop.Deploy.Builders
         protected abstract string TargetFramework { get; }
         protected abstract string RuntimeIdentifier { get; }
 
-        protected string SplashImagePath => Path.Combine(Program.SolutionPath, "assets", "lazer-nuget.png");
+        protected string SplashImagePath => Path.Combine(Program.SolutionPath, "assets", "lazer-velopack.png");
         protected string IconPath => Path.Combine(Program.SolutionPath, Program.ProjectName, Program.IconName);
 
         protected readonly string Version;
