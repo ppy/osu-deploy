@@ -48,6 +48,7 @@ namespace osu.Desktop.Deploy.Uploaders
         {
             Program.RunCommand("dotnet", $"vpk [{operatingSystemName}] pack"
                                          + $" --packTitle=\"{PackTitle}\""
+                                         + $" --packAuthor=\"ppy Pty Ltd\""
                                          + $" --packId=\"{Program.PackageName}\""
                                          + $" --packVersion=\"{version}\""
                                          + $" --runtime=\"{runtimeIdentifier}\""
