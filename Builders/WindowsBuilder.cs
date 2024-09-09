@@ -13,13 +13,9 @@ namespace osu.Desktop.Deploy.Builders
         private const string os_name = "win";
         private const string channel = "win";
 
-        private readonly string? codeSigningPassword;
-
-        public WindowsBuilder(string version, string? codeSigningPassword)
+        public WindowsBuilder(string version)
             : base(version)
         {
-            if (!string.IsNullOrEmpty(Program.WindowsCodeSigningCertPath))
-                this.codeSigningPassword = codeSigningPassword ?? Program.ReadLineMasked("Enter code signing password: ");
         }
 
         protected override string TargetFramework => "net8.0";
@@ -32,8 +28,13 @@ namespace osu.Desktop.Deploy.Builders
                                + $" --icon=\"{installIcon}\""
                                + $" --noPortable";
 
-            if (!string.IsNullOrEmpty(Program.WindowsCodeSigningCertPath))
-                extraArgs += $" --signParams=\"/td sha256 /fd sha256 /f {Path.GetFullPath(Program.WindowsCodeSigningCertPath)} /p {codeSigningPassword} /tr http://timestamp.comodoca.com\"";
+            if (!string.IsNullOrEmpty(Program.WindowsCodeSigningMetadataPath))
+            {
+                // TODO: resolve from .nuget (or just include locally...)
+                string dlibPath = "Azure.CodeSigning.Dlib.dll";
+
+                extraArgs += $" --signParams=\"/td sha256 /fd sha256 /dlib {dlibPath} /dmdf {Program.WindowsCodeSigningMetadataPath} /tr http://timestamp.acs.microsoft.com\"";
+            }
 
             return new WindowsVelopackUploader(app_name, os_name, RuntimeIdentifier, channel, extraArgs: extraArgs);
         }
