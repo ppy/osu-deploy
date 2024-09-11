@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using osu.Desktop.Deploy.Uploaders;
 
 namespace osu.Desktop.Deploy.Builders
@@ -30,10 +31,15 @@ namespace osu.Desktop.Deploy.Builders
 
             if (!string.IsNullOrEmpty(Program.WindowsCodeSigningMetadataPath))
             {
-                // TODO: resolve from .nuget (or just include locally...)
-                string dlibPath = "Azure.CodeSigning.Dlib.dll";
+                string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages", "microsoft.trusted.signing.client");
+                const string dll_name = "Azure.CodeSigning.Dlib.dll";
 
-                extraArgs += $" --signParams=\"/td sha256 /fd sha256 /dlib {dlibPath} /dmdf {Program.WindowsCodeSigningMetadataPath} /tr http://timestamp.acs.microsoft.com\"";
+                string? dllPath = Directory.GetFiles(path, dll_name, SearchOption.AllDirectories).LastOrDefault();
+
+                if (dllPath == null)
+                    Logger.Error("Could not find path for Dlib.dll");
+
+                extraArgs += $" --signParams=\"/td sha256 /fd sha256 /dlib \\\"{dllPath}\\\" /dmdf \\\"{Program.WindowsCodeSigningMetadataPath}\\\" /tr http://timestamp.acs.microsoft.com\"";
             }
 
             return new WindowsVelopackUploader(app_name, os_name, RuntimeIdentifier, channel, extraArgs: extraArgs);
