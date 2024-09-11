@@ -39,7 +39,7 @@ namespace osu.Desktop.Deploy.Builders
                 if (dllPath == null)
                     Logger.Error("Could not find path for Dlib.dll");
 
-                extraArgs += $" --signParams=\"/td sha256 /fd sha256 /dlib \\\"{dllPath}\\\" /dmdf \\\"{Program.WindowsCodeSigningMetadataPath}\\\" /tr http://timestamp.acs.microsoft.com\"";
+                extraArgs += $" --signParams=\"/td sha256 /fd sha256 /dlib \\\"{dllPath}\\\" /dmdf \\\"{Path.GetFullPath(Program.WindowsCodeSigningMetadataPath)}\\\" /tr http://timestamp.acs.microsoft.com\"";
             }
 
             return new WindowsVelopackUploader(app_name, os_name, RuntimeIdentifier, channel, extraArgs: extraArgs);
