@@ -34,7 +34,7 @@ namespace osu.Desktop.Deploy.Builders
                 string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages", "microsoft.trusted.signing.client");
                 const string dll_name = "Azure.CodeSigning.Dlib.dll";
 
-                string? dllPath = Directory.GetFiles(path, dll_name, SearchOption.AllDirectories).LastOrDefault();
+                string? dllPath = Directory.GetFiles(path, dll_name, SearchOption.AllDirectories).LastOrDefault(p => p.Contains("x64"));
 
                 if (dllPath == null)
                     Logger.Error("Could not find path for Dlib.dll");
