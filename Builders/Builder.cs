@@ -12,7 +12,7 @@ namespace osu.Desktop.Deploy.Builders
         protected abstract string TargetFramework { get; }
         protected abstract string RuntimeIdentifier { get; }
 
-        protected string SplashImagePath => Path.Combine(Environment.CurrentDirectory, "lazer-velopack.png");
+        protected string SplashImagePath => Path.Combine(Environment.CurrentDirectory, "lazer-velopack.jpg");
         protected string IconPath => Path.Combine(Program.SolutionPath, Program.ProjectName, Program.IconName);
 
         protected readonly string Version;
