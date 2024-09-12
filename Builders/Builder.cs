@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.IO;
 using osu.Desktop.Deploy.Uploaders;
 
@@ -11,7 +12,7 @@ namespace osu.Desktop.Deploy.Builders
         protected abstract string TargetFramework { get; }
         protected abstract string RuntimeIdentifier { get; }
 
-        protected string SplashImagePath => Path.Combine(Program.SolutionPath, "assets", "lazer-nuget.png");
+        protected string SplashImagePath => Path.Combine(Environment.CurrentDirectory, "lazer-velopack.jpg");
         protected string IconPath => Path.Combine(Program.SolutionPath, Program.ProjectName, Program.IconName);
 
         protected readonly string Version;
