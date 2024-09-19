@@ -9,5 +9,5 @@ fi
 
 HERE="$(dirname "$(readlink -f "${0}")")"
 export PATH="${HERE}"/usr/bin/:"${PATH}"
-EXEC=$(grep -e '^Exec=.*' "${HERE}"/*.desktop | head -n 1 | rev | cut -d "=" -f 1 | cut -d " " -f 1 | rev)
+EXEC=$(grep -e '^Exec=.*' "${HERE}"/*.desktop | head -n 1 | cut -d "=" -f 2 | cut -d " " -f 1)
 exec "${EXEC}" "$@"
