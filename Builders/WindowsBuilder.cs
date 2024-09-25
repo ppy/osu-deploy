@@ -39,7 +39,12 @@ namespace osu.Desktop.Deploy.Builders
                 if (dllPath == null)
                     Logger.Error("Could not find path for Dlib.dll");
 
-                extraArgs += $" --signParams=\"/td sha256 /fd sha256 /dlib \\\"{dllPath}\\\" /dmdf \\\"{Path.GetFullPath(Program.WindowsCodeSigningMetadataPath)}\\\" /tr http://timestamp.acs.microsoft.com\"";
+                string signToolPath = Directory.GetDirectories(@"C:\Program Files (x86)\Windows Kits\10\bin", "*", SearchOption.AllDirectories)
+                                               .Select(dir => Path.Combine(dir, @"x64\signtool.exe"))
+                                               .Where(File.Exists)
+                                               .Last();
+
+                extraArgs += $" --signTemplate=\"\\\"{signToolPath}\\\" sign /td sha256 /fd sha256 /dlib \\\"{dllPath}\\\" /dmdf \\\"{Path.GetFullPath(Program.WindowsCodeSigningMetadataPath)}\\\" /tr http://timestamp.acs.microsoft.com {{{{file...}}}}";
             }
 
             return new WindowsVelopackUploader(app_name, os_name, RuntimeIdentifier, channel, extraArgs: extraArgs);
