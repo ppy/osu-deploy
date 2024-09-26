@@ -39,6 +39,10 @@ namespace osu.Desktop.Deploy.Builders
                 if (dllPath == null)
                     Logger.Error("Could not find path for Dlib.dll");
 
+                // We're using `signTemplate` here as we need to prefer the system `signtool.exe` in order for it to
+                // run azure code signing correctly on older windows versions.
+                //
+                // This can be changed back to `signParams` if velopack changes the signtool logic to fix this.
                 string signToolPath = Directory.GetDirectories(@"C:\Program Files (x86)\Windows Kits\10\bin", "*", SearchOption.AllDirectories)
                                                .Select(dir => Path.Combine(dir, @"x64\signtool.exe"))
                                                .Where(File.Exists)
