@@ -22,7 +22,7 @@ namespace osu.Desktop.Deploy.Builders
         {
             RunDotnetPublish("-p:ApplicationDisplayVersion=1.0");
 
-            File.Move(Path.Combine(Program.StagingPath, "osu.iOS.app"), Path.Combine(Program.ReleasesPath, "osu.iOS.app"), true);
+            File.Move(Path.Combine(Program.StagingPath, "osu.iOS.ipa"), Path.Combine(Program.ReleasesPath, "osu.iOS.ipa"), true);
         }
     }
 }
