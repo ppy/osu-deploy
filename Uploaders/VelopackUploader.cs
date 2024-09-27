@@ -56,6 +56,7 @@ namespace osu.Desktop.Deploy.Uploaders
                                          + $" --mainExe=\"{applicationName}\""
                                          + $" --packDir=\"{stagingPath}\""
                                          + $" --channel=\"{channel}\""
+                                         + " --verbose"
                                          + $" {extraArgs}",
                 useSolutionPath: false);
 

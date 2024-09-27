@@ -37,7 +37,7 @@ namespace osu.Desktop.Deploy
         public static string GitHubRepoUrl => $"https://github.com/{GitHubUsername}/{GitHubRepoName}";
         public static bool CanGitHub => !string.IsNullOrEmpty(GitHubAccessToken);
 
-        public static string? WindowsCodeSigningCertPath => ConfigurationManager.AppSettings["WindowsCodeSigningCertPath"];
+        public static string? WindowsCodeSigningMetadataPath => ConfigurationManager.AppSettings["WindowsCodeSigningMetadataPath"];
         public static string? AndroidCodeSigningCertPath => ConfigurationManager.AppSettings["AndroidCodeSigningCertPath"];
         public static string? AppleCodeSignCertName => ConfigurationManager.AppSettings["AppleCodeSignCertName"];
         public static string? AppleInstallSignCertName => ConfigurationManager.AppSettings["AppleInstallSignCertName"];
@@ -99,7 +99,7 @@ namespace osu.Desktop.Deploy
 
             Console.ResetColor();
             Console.WriteLine($"Increment Version:     {IncrementVersion}");
-            Console.WriteLine($"Signing Certificate:   {WindowsCodeSigningCertPath}");
+            Console.WriteLine($"Signing Certificate:   {WindowsCodeSigningMetadataPath}");
             Console.WriteLine($"Upload to GitHub:      {GitHubUpload}");
             Console.WriteLine();
             Console.Write($"Ready to deploy version {version} on platform {targetPlatform}!");
@@ -113,7 +113,7 @@ namespace osu.Desktop.Deploy
             switch (targetPlatform)
             {
                 case RuntimeInfo.Platform.Windows:
-                    builder = new WindowsBuilder(version, getArg(0));
+                    builder = new WindowsBuilder(version);
                     break;
 
                 case RuntimeInfo.Platform.Linux:

@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using osu.Desktop.Deploy.Uploaders;
 
 namespace osu.Desktop.Deploy.Builders
@@ -13,13 +14,9 @@ namespace osu.Desktop.Deploy.Builders
         private const string os_name = "win";
         private const string channel = "win";
 
-        private readonly string? codeSigningPassword;
-
-        public WindowsBuilder(string version, string? codeSigningPassword)
+        public WindowsBuilder(string version)
             : base(version)
         {
-            if (!string.IsNullOrEmpty(Program.WindowsCodeSigningCertPath))
-                this.codeSigningPassword = codeSigningPassword ?? Program.ReadLineMasked("Enter code signing password: ");
         }
 
         protected override string TargetFramework => "net8.0";
@@ -32,8 +29,27 @@ namespace osu.Desktop.Deploy.Builders
                                + $" --icon=\"{installIcon}\""
                                + $" --noPortable";
 
-            if (!string.IsNullOrEmpty(Program.WindowsCodeSigningCertPath))
-                extraArgs += $" --signParams=\"/td sha256 /fd sha256 /f {Path.GetFullPath(Program.WindowsCodeSigningCertPath)} /p {codeSigningPassword} /tr http://timestamp.comodoca.com\"";
+            if (!string.IsNullOrEmpty(Program.WindowsCodeSigningMetadataPath))
+            {
+                string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages", "microsoft.trusted.signing.client");
+                const string dll_name = "Azure.CodeSigning.Dlib.dll";
+
+                string? dllPath = Directory.GetFiles(path, dll_name, SearchOption.AllDirectories).LastOrDefault(p => p.Contains("x64"));
+
+                if (dllPath == null)
+                    Logger.Error("Could not find path for Dlib.dll");
+
+                // We're using `signTemplate` here as we need to prefer the system `signtool.exe` in order for it to
+                // run azure code signing correctly on older windows versions.
+                //
+                // This can be changed back to `signParams` if velopack changes the signtool logic to fix this.
+                string signToolPath = Directory.GetDirectories(@"C:\Program Files (x86)\Windows Kits\10\bin", "*", SearchOption.AllDirectories)
+                                               .Select(dir => Path.Combine(dir, @"x64\signtool.exe"))
+                                               .Where(File.Exists)
+                                               .Last();
+
+                extraArgs += $" --signTemplate=\"\\\"{signToolPath}\\\" sign /td sha256 /fd sha256 /dlib \\\"{dllPath}\\\" /dmdf \\\"{Path.GetFullPath(Program.WindowsCodeSigningMetadataPath)}\\\" /tr http://timestamp.acs.microsoft.com {{{{file...}}}}";
+            }
 
             return new WindowsVelopackUploader(app_name, os_name, RuntimeIdentifier, channel, extraArgs: extraArgs);
         }
