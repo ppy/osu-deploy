@@ -25,7 +25,14 @@ namespace osu.Desktop.Deploy.Builders
         protected override string TargetFramework => "net8.0";
         protected override string RuntimeIdentifier => $"{os_name}-x64";
 
-        public override Uploader CreateUploader() => new LinuxVelopackUploader(app_name, os_name, RuntimeIdentifier, RuntimeIdentifier, stagingPath: stagingTarget);
+        public override Uploader CreateUploader()
+        {
+            // Temporarily fix for zstd (current default) not being supported on some systems: https://github.com/ppy/osu/issues/30175
+            // Todo: Remove with the next velopack release.
+            const string extra_args = " --compression gzip";
+
+            return new LinuxVelopackUploader(app_name, os_name, RuntimeIdentifier, RuntimeIdentifier, extraArgs: extra_args, stagingPath: stagingTarget);
+        }
 
         public override void Build()
         {
