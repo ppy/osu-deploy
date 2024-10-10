@@ -2,8 +2,8 @@
   "version": 1,
   "isRoot": true,
   "tools": {
-    "smgi.vpk": {
-      "version": "0.0.754-g7e9735c",
+    "vpk": {
+      "version": "0.0.755-g7719c71",
       "commands": [
         "vpk"
       ]
