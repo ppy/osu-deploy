@@ -66,7 +66,6 @@ namespace osu.Desktop.Deploy.Builders
         {
             if (Directory.Exists(stagingTarget))
                 Directory.Delete(stagingTarget, true);
-            Directory.CreateDirectory(stagingTarget);
 
             CopyDirectory(Path.Combine(Program.TemplatesPath, app_dir), stagingTarget, true);
 
