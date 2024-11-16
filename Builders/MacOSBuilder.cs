@@ -30,6 +30,9 @@ namespace osu.Desktop.Deploy.Builders
 
             RuntimeIdentifier = $"{os_name}-{arch}";
 
+            if (Program.PhotonRelease)
+                RuntimeIdentifier += "-photon";
+
             stagingTarget = Path.Combine(Program.StagingPath, app_dir);
             publishTarget = Path.Combine(stagingTarget, "Contents", "MacOS");
         }

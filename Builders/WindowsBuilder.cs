@@ -12,7 +12,7 @@ namespace osu.Desktop.Deploy.Builders
     {
         private const string app_name = "osu!.exe";
         private const string os_name = "win";
-        private const string channel = "win";
+        private readonly string channel = Program.PhotonRelease ? "win-photon" : "win";
 
         public WindowsBuilder(string version)
             : base(version)

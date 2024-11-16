@@ -45,6 +45,7 @@ namespace osu.Desktop.Deploy
         public static string? AppleKeyChainPath => ConfigurationManager.AppSettings["AppleKeyChainPath"];
 
         public static bool IncrementVersion => bool.Parse(ConfigurationManager.AppSettings["IncrementVersion"] ?? "true");
+        public static bool PhotonRelease => bool.Parse(ConfigurationManager.AppSettings["PhotonRelease"] ?? "false");
 
         public static string SolutionPath { get; private set; } = null!;
 
@@ -96,6 +97,9 @@ namespace osu.Desktop.Deploy
                 version = args[1];
             if (args.Length > 2 && !string.IsNullOrEmpty(args[2]))
                 Enum.TryParse(args[2], true, out targetPlatform);
+
+            if (PhotonRelease)
+                version += "-photon";
 
             Console.ResetColor();
             Console.WriteLine($"Increment Version:     {IncrementVersion}");

@@ -20,10 +20,15 @@ namespace osu.Desktop.Deploy.Builders
         {
             stagingTarget = Path.Combine(Program.StagingPath, app_dir);
             publishTarget = Path.Combine(stagingTarget, "usr", "bin");
+
+            RuntimeIdentifier = $"{os_name}-x64";
+
+            if (Program.PhotonRelease)
+                RuntimeIdentifier += "-photon";
         }
 
         protected override string TargetFramework => "net8.0";
-        protected override string RuntimeIdentifier => $"{os_name}-x64";
+        protected override string RuntimeIdentifier { get; }
 
         public override Uploader CreateUploader()
         {
