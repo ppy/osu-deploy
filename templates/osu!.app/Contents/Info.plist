@@ -95,7 +95,11 @@
 			<false/>
 		</dict>
 	</array>
+	<!-- Game Mode causes occasional input hang-ups on macOS, 
+	     comment out application category to disable it for now.
+	 	 This should be revisited once osu! can handle input without the window event flow,
+	 	 see: https://github.com/ppy/osu-framework/issues/6141
 	<key>LSApplicationCategoryType</key>
-	<string>public.app-category.music-games</string>
+	<string>public.app-category.music-games</string> -->
 </dict>
 </plist>
