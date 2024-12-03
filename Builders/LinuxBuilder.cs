@@ -69,6 +69,8 @@ namespace osu.Desktop.Deploy.Builders
 
             CopyDirectory(Path.Combine(Program.TemplatesPath, app_dir), stagingTarget, true);
 
+            File.CreateSymbolicLink(Path.Combine(stagingTarget, ".DirIcon"), "osu.png");
+
             Program.RunCommand("chmod", $"+x {stagingTarget}/AppRun");
 
             RunDotnetPublish(outputDir: publishTarget);
