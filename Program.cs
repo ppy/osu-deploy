@@ -46,6 +46,8 @@ namespace osu.Desktop.Deploy
 
         public static bool IncrementVersion => bool.Parse(ConfigurationManager.AppSettings["IncrementVersion"] ?? "true");
 
+        public static bool UseSatoriGC => bool.TryParse(Environment.GetEnvironmentVariable("USE_SATORI_GC"), out bool useSatori) && useSatori;
+
         public static string SolutionPath { get; private set; } = null!;
 
         private static bool interactive;

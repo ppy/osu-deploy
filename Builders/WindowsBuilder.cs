@@ -48,7 +48,8 @@ namespace osu.Desktop.Deploy.Builders
                                                .Where(File.Exists)
                                                .Last();
 
-                extraArgs += $" --signTemplate=\"\\\"{signToolPath}\\\" sign /td sha256 /fd sha256 /dlib \\\"{dllPath}\\\" /dmdf \\\"{Path.GetFullPath(Program.WindowsCodeSigningMetadataPath)}\\\" /tr http://timestamp.acs.microsoft.com {{{{file...}}}}";
+                extraArgs +=
+                    $" --signTemplate=\"\\\"{signToolPath}\\\" sign /td sha256 /fd sha256 /dlib \\\"{dllPath}\\\" /dmdf \\\"{Path.GetFullPath(Program.WindowsCodeSigningMetadataPath)}\\\" /tr http://timestamp.acs.microsoft.com {{{{file...}}}}";
             }
 
             return new WindowsVelopackUploader(app_name, os_name, RuntimeIdentifier, channel, extraArgs: extraArgs);
@@ -57,6 +58,7 @@ namespace osu.Desktop.Deploy.Builders
         public override void Build()
         {
             RunDotnetPublish();
+            AttachSatoriGC();
 
             bool rcEditCommand =
                 Program.RunCommand("tools/rcedit-x64.exe", $"\"{Path.Combine(Program.StagingPath, "osu!.exe")}\""

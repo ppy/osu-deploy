@@ -74,6 +74,7 @@ namespace osu.Desktop.Deploy.Builders
             Program.RunCommand("chmod", $"+x {stagingTarget}/AppRun");
 
             RunDotnetPublish(outputDir: publishTarget);
+            AttachSatoriGC(outputDir: publishTarget);
         }
     }
 }
