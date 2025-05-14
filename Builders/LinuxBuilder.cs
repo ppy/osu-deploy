@@ -35,29 +35,29 @@ namespace osu.Desktop.Deploy.Builders
         }
 
         // https://learn.microsoft.com/en-us/dotnet/standard/io/how-to-copy-directories
-        static void CopyDirectory(string sourceDir, string destinationDir, bool recursive)
+        private static void copyDirectory(string sourceDir, string destinationDir, bool recursive)
         {
             var dir = new DirectoryInfo(sourceDir);
-        
+
             if (!dir.Exists)
                 throw new DirectoryNotFoundException($"Source directory not found: {dir.FullName}");
-        
+
             DirectoryInfo[] dirs = dir.GetDirectories();
-        
+
             Directory.CreateDirectory(destinationDir);
-        
+
             foreach (FileInfo file in dir.GetFiles())
             {
                 string targetFilePath = Path.Combine(destinationDir, file.Name);
                 file.CopyTo(targetFilePath);
             }
-        
+
             if (recursive)
             {
                 foreach (DirectoryInfo subDir in dirs)
                 {
                     string newDestinationDir = Path.Combine(destinationDir, subDir.Name);
-                    CopyDirectory(subDir.FullName, newDestinationDir, true);
+                    copyDirectory(subDir.FullName, newDestinationDir, true);
                 }
             }
         }
@@ -67,7 +67,7 @@ namespace osu.Desktop.Deploy.Builders
             if (Directory.Exists(stagingTarget))
                 Directory.Delete(stagingTarget, true);
 
-            CopyDirectory(Path.Combine(Program.TemplatesPath, app_dir), stagingTarget, true);
+            copyDirectory(Path.Combine(Program.TemplatesPath, app_dir), stagingTarget, true);
 
             File.CreateSymbolicLink(Path.Combine(stagingTarget, ".DirIcon"), "osu.png");
 
