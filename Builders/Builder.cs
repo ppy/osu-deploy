@@ -3,7 +3,9 @@
 
 using System;
 using System.IO;
+using System.IO.Compression;
 using osu.Desktop.Deploy.Uploaders;
+using osu.Framework.IO.Network;
 
 namespace osu.Desktop.Deploy.Builders
 {
@@ -42,6 +44,28 @@ namespace osu.Desktop.Deploy.Builders
                                          + $" --self-contained"
                                          + $" {extraArgs}"
                                          + $" {Program.ProjectName}");
+        }
+
+        protected void AttachSatoriGC(string? outputDir = null)
+        {
+            outputDir ??= Program.StagingPath;
+
+            if (Program.UseSatoriGC)
+            {
+                Logger.Write("Downloading Satori GC release...");
+                string satoriArchivePath = Path.GetTempFileName();
+                using (var req = new FileWebRequest(satoriArchivePath, $"https://github.com/ppy/Satori/releases/latest/download/{RuntimeIdentifier}.zip"))
+                    req.Perform();
+
+                Logger.Write("Extracting Satori GC into staging folder...");
+
+                using (var stream = File.OpenRead(satoriArchivePath))
+                using (var archive = new ZipArchive(stream))
+                {
+                    foreach (var entry in archive.Entries)
+                        entry.ExtractToFile(Path.Combine(outputDir, entry.Name), true);
+                }
+            }
         }
 
         private static void refreshDirectory(string directory)

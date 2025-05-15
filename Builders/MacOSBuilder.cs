@@ -62,6 +62,7 @@ namespace osu.Desktop.Deploy.Builders
             Program.RunCommand("cp", $"-r \"{Path.Combine(Program.TemplatesPath, app_dir)}\" \"{stagingTarget}\"");
 
             RunDotnetPublish(outputDir: publishTarget);
+            AttachSatoriGC(outputDir: publishTarget);
 
             // without touching the app bundle itself, changes to file associations / icons / etc. will be cached at a macOS level and not updated.
             Program.RunCommand("touch", $"\"{stagingTarget}\" {Program.StagingPath}", false);
