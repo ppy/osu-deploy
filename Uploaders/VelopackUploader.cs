@@ -35,7 +35,8 @@ namespace osu.Desktop.Deploy.Uploaders
                                              + $" --repoUrl=\"{Program.GitHubRepoUrl}\""
                                              + $" --token=\"{Program.GitHubAccessToken}\""
                                              + $" --channel=\"{channel}\""
-                                             + $" --outputDir=\"{Program.ReleasesPath}\"",
+                                             + $" --outputDir=\"{Program.ReleasesPath}\""
+                                             + " --pre",
                     throwIfNonZero: false,
                     useSolutionPath: false);
             }
