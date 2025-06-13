@@ -99,6 +99,10 @@ namespace osu.Desktop.Deploy
             if (args.Length > 2 && !string.IsNullOrEmpty(args[2]))
                 Enum.TryParse(args[2], true, out targetPlatform);
 
+            // ensure version has a suffix
+            if (version.Split('-').Length == 1)
+                version = $"{version}-lazer";
+
             Console.ResetColor();
             Console.WriteLine($"Increment Version:     {IncrementVersion}");
             Console.WriteLine($"Signing Certificate:   {WindowsCodeSigningMetadataPath}");
