@@ -88,7 +88,7 @@ namespace osu.Desktop.Deploy
             int increment = 0;
 
             if (lastRelease?.TagName.StartsWith(verBase, StringComparison.InvariantCulture) ?? false)
-                increment = int.Parse(lastRelease.TagName.Split('.')[2]) + (IncrementVersion ? 1 : 0);
+                increment = int.Parse(lastRelease.TagName.Split('-').First().Split('.')[2]) + (IncrementVersion ? 1 : 0);
 
             string version = $"{verBase}{increment}";
 
