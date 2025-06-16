@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.IO;
+using System.Linq;
 using osu.Desktop.Deploy.Uploaders;
 
 namespace osu.Desktop.Deploy.Builders
@@ -36,7 +37,7 @@ namespace osu.Desktop.Deploy.Builders
                     + $" -p:AndroidSigningStorePass={codeSigningPassword}";
             }
 
-            string[] versionParts = Version.Split('.');
+            string[] versionParts = Version.Split('-').First().Split('.');
             string versionCode = versionParts[0].PadLeft(4, '0') + versionParts[1].PadLeft(4, '0') + versionParts[2].PadLeft(1, '0');
 
             RunDotnetPublish($"-p:ApplicationVersion={versionCode} {codeSigningArguments}");
