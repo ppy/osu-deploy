@@ -2,7 +2,6 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -22,50 +21,75 @@ namespace osu.Desktop.Deploy.Uploaders
             if (!Program.CanGitHub || !Program.GitHubUpload)
                 return;
 
-            var req = new JsonWebRequest<GitHubRelease>($"{Program.GitHubApiEndpoint}")
-            {
-                Method = HttpMethod.Post,
-            };
-
             GitHubRelease? targetRelease = Program.GetLastGithubRelease(true);
 
             if (targetRelease == null || targetRelease.TagName != version)
             {
                 Logger.Write($"- Creating release {version}...", ConsoleColor.Yellow);
-                req.AddRaw(JsonConvert.SerializeObject(new GitHubRelease
-                {
-                    Name = version,
-                    Draft = true,
-                }));
-                req.AuthenticatedBlockingPerform();
-
-                targetRelease = req.ResponseObject;
+                targetRelease = createRelease(version);
             }
             else
-            {
                 Logger.Write($"- Adding to existing release {version}...", ConsoleColor.Yellow);
-            }
 
-            Debug.Assert(targetRelease.UploadUrl != null);
-
-            var assetUploadUrl = targetRelease.UploadUrl.Replace("{?name,label}", "?name={0}");
-
-            foreach (var a in Directory.GetFiles(Program.RELEASES_FOLDER).Reverse()) //reverse to upload RELEASES first.
+            foreach (var assetPath in Directory.GetFiles(Program.RELEASES_FOLDER).Reverse()) //reverse to upload RELEASES first.
             {
-                if (Path.GetFileName(a).StartsWith('.'))
+                string assetName = Path.GetFileName(assetPath);
+
+                if (assetName.StartsWith('.'))
                     continue;
 
-                Logger.Write($"- Adding asset {a}...", ConsoleColor.Yellow);
-                var upload = new WebRequest(assetUploadUrl, Path.GetFileName(a))
-                {
-                    Method = HttpMethod.Post,
-                    Timeout = 240000,
-                    ContentType = "application/octet-stream",
-                };
+                GitHubAsset? existing = targetRelease.Assets.SingleOrDefault(releaseAsset => releaseAsset.Name == assetName);
 
-                upload.AddRaw(File.ReadAllBytes(a));
-                upload.AuthenticatedBlockingPerform();
+                if (existing != null)
+                {
+                    Logger.Write($"- Deleting existing asset {existing.Name}...", ConsoleColor.Yellow);
+                    deleteAsset(existing.Url);
+                }
+
+                Logger.Write($"- Uploading asset {assetName}...", ConsoleColor.Yellow);
+                uploadAsset(targetRelease.UploadUrl.Replace("{?name,label}", "?name={0}"), assetName, assetPath);
             }
+        }
+
+        private GitHubRelease createRelease(string name)
+        {
+            var req = new JsonWebRequest<GitHubRelease>($"{Program.GitHubApiEndpoint}")
+            {
+                Method = HttpMethod.Post,
+            };
+
+            req.AddRaw(JsonConvert.SerializeObject(new GitHubRelease
+            {
+                Name = name,
+                Draft = true
+            }));
+
+            req.AuthenticatedBlockingPerform();
+
+            return req.ResponseObject;
+        }
+
+        private void deleteAsset(string url)
+        {
+            var req = new WebRequest(url)
+            {
+                Method = HttpMethod.Delete
+            };
+
+            req.AuthenticatedBlockingPerform();
+        }
+
+        private void uploadAsset(string url, string name, string path)
+        {
+            var req = new WebRequest(url, name)
+            {
+                Method = HttpMethod.Post,
+                Timeout = 240000,
+                ContentType = "application/octet-stream",
+            };
+
+            req.AddRaw(File.ReadAllBytes(path));
+            req.AuthenticatedBlockingPerform();
         }
     }
 }
