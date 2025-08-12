@@ -64,8 +64,7 @@ namespace osu.Desktop.Deploy.Uploaders
             req.AddRaw(JsonConvert.SerializeObject(new GitHubRelease
             {
                 Name = name,
-                Draft = true,
-                PreRelease = true,
+                Draft = true
             }));
 
             req.AuthenticatedBlockingPerform();

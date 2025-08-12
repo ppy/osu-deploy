@@ -68,7 +68,6 @@ namespace osu.Desktop.Deploy.Uploaders
                                              + $" --token=\"{Program.GitHubAccessToken}\""
                                              + $" --outputDir=\"{Program.ReleasesPath}\""
                                              + $" --tag=\"{version}\""
-                                             + $" --pre"
                                              + $" --releaseName=\"{version}\""
                                              + $" --merge"
                                              + $" --channel=\"{channel}\"",
