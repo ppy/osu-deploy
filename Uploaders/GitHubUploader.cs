@@ -31,9 +31,6 @@ namespace osu.Desktop.Deploy.Uploaders
             else
                 Logger.Write($"- Adding to existing release {version}...", ConsoleColor.Yellow);
 
-            if (!targetRelease.Draft)
-                throw new Exception("Cannot upload to a non-draft release");
-
             foreach (var assetPath in Directory.GetFiles(Program.RELEASES_FOLDER).Reverse()) //reverse to upload RELEASES first.
             {
                 string assetName = Path.GetFileName(assetPath);
