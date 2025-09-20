@@ -14,13 +14,23 @@ namespace osu.Desktop.Deploy.Builders
         private const string os_name = "win";
         private const string channel = "win";
 
-        public WindowsBuilder(string version)
+        public WindowsBuilder(string version, string? arch)
             : base(version)
         {
+            if (string.IsNullOrEmpty(arch))
+            {
+                Console.Write("Build for which architecture? [x64/arm64]: ");
+                arch = Console.ReadLine() ?? string.Empty;
+            }
+
+            if (arch != "x64" && arch != "arm64")
+                Logger.Error($"Invalid Architecture: {arch}");
+
+            RuntimeIdentifier = $"{os_name}-{arch}";
         }
 
         protected override string TargetFramework => "net8.0";
-        protected override string RuntimeIdentifier => $"{os_name}-x64";
+        protected override string RuntimeIdentifier { get; }
 
         public override Uploader CreateUploader()
         {

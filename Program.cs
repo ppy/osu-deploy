@@ -119,7 +119,7 @@ namespace osu.Desktop.Deploy
             switch (targetPlatform)
             {
                 case RuntimeInfo.Platform.Windows:
-                    builder = new WindowsBuilder(version);
+                    builder = new WindowsBuilder(version, getArg(3));
                     break;
 
                 case RuntimeInfo.Platform.Linux:
