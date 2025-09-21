@@ -12,7 +12,6 @@ namespace osu.Desktop.Deploy.Builders
     {
         private const string app_name = "osu!.exe";
         private const string os_name = "win";
-        private const string channel = "win";
 
         public WindowsBuilder(string version)
             : base(version)
@@ -52,7 +51,7 @@ namespace osu.Desktop.Deploy.Builders
                     $" --signTemplate=\"\\\"{signToolPath}\\\" sign /td sha256 /fd sha256 /dlib \\\"{dllPath}\\\" /dmdf \\\"{Path.GetFullPath(Program.WindowsCodeSigningMetadataPath)}\\\" /tr http://timestamp.acs.microsoft.com {{{{file...}}}}";
             }
 
-            return new WindowsVelopackUploader(app_name, os_name, RuntimeIdentifier, channel, extraArgs: extraArgs);
+            return new WindowsVelopackUploader(app_name, os_name, RuntimeIdentifier, RuntimeIdentifier, extraArgs: extraArgs);
         }
 
         public override void Build()
