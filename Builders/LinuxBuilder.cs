@@ -71,6 +71,11 @@ namespace osu.Desktop.Deploy.Builders
 
             File.CreateSymbolicLink(Path.Combine(stagingTarget, ".DirIcon"), "osu.png");
 
+            File.AppendAllLines(Path.Combine(stagingTarget, "osu!.desktop"), new[]
+            {
+                $"X-AppImage-Version={Version}"
+            });
+
             Program.RunCommand("chmod", $"+x {stagingTarget}/AppRun");
 
             RunDotnetPublish(outputDir: publishTarget);
