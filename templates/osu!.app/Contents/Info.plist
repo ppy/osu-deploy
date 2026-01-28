@@ -11,7 +11,9 @@
 	<key>CFBundleGetInfoString</key>
 	<string>osu-lazer</string>
 	<key>CFBundleIconFile</key>
-	<string>osu.icns</string>
+	<string>AppIcon</string>
+	<key>CFBundleIconFileName</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>sh.ppy.osu.lazer</string>
 	<key>CFBundleInfoDictionaryVersion</key>
