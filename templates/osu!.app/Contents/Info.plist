@@ -12,7 +12,7 @@
 	<string>osu-lazer</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
-	<key>CFBundleIconFileName</key>
+	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>sh.ppy.osu.lazer</string>
