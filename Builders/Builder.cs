@@ -54,7 +54,7 @@ namespace osu.Desktop.Deploy.Builders
             {
                 Logger.Write("Downloading Satori GC release...");
                 string satoriArchivePath = Path.GetTempFileName();
-                using (var req = new FileWebRequest(satoriArchivePath, $"https://github.com/ppy/Satori/releases/latest/download/{RuntimeIdentifier}.zip"))
+                using (var req = new FileWebRequest(satoriArchivePath, $"https://github.com/ppy/Satori/releases/download/2025.807.0/{RuntimeIdentifier}.zip"))
                     req.Perform();
 
                 Logger.Write("Extracting Satori GC into staging folder...");
