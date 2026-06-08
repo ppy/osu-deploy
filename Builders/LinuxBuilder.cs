@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.IO;
 using osu.Desktop.Deploy.Uploaders;
 
@@ -15,15 +16,26 @@ namespace osu.Desktop.Deploy.Builders
         private readonly string stagingTarget;
         private readonly string publishTarget;
 
-        public LinuxBuilder(string version)
+        public LinuxBuilder(string version, string? arch)
             : base(version)
         {
+            if (string.IsNullOrEmpty(arch))
+            {
+                Console.Write("Build for which architecture? [x64/arm64]: ");
+                arch = Console.ReadLine() ?? string.Empty;
+            }
+
+            if (arch != "x64" && arch != "arm64")
+                Logger.Error($"Invalid Architecture: {arch}");
+
+            RuntimeIdentifier = $"{os_name}-{arch}";
+
             stagingTarget = Path.Combine(Program.StagingPath, app_dir);
             publishTarget = Path.Combine(stagingTarget, "usr", "bin");
         }
 
         protected override string TargetFramework => "net8.0";
-        protected override string RuntimeIdentifier => $"{os_name}-x64";
+        protected override string RuntimeIdentifier { get; }
 
         public override Uploader CreateUploader()
         {
